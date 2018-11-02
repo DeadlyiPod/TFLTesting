@@ -40,16 +40,18 @@ public class RedDepot extends LinearOpMode {
     private DcMotor rightInnerDrive = null;
     private DcMotor rightOuterDrive = null;
 
+    private DcMotor slideMotor = null;
+    private DcMotor rotateMotor = null;
+
     private CRServo intake = null;
 
     // The IMU sensor object
     BNO055IMU imu;
 
-    static final double     COUNTS_PER_MOTOR_REV    = 1440 ;    // eg: TETRIX Motor Encoder
-    static final double     DRIVE_GEAR_REDUCTION    = 2.0 ;     // This is < 1.0 if geared UP
+    static final double     COUNTS_PER_MOTOR_REV    = 1120 ;    // eg: TETRIX Motor Encoder
+    static final double     DRIVE_GEAR_REDUCTION    = 1 ;     // This is < 1.0 if geared UP
     static final double     WHEEL_DIAMETER_INCHES   = 4.0 ;     // For figuring circumference
-    static final double     COUNTS_PER_INCH         = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
-            (WHEEL_DIAMETER_INCHES * 3.1415);
+    static final double     COUNTS_PER_INCH         = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) / (WHEEL_DIAMETER_INCHES * 3.1415);
 
     // These constants define the desired driving/control characteristics
     // The can/should be tweaked to suite the specific robot drive train.
@@ -66,6 +68,7 @@ public class RedDepot extends LinearOpMode {
 
     //Vuforia License
     private static final String VUFORIA_KEY = "AV4rzZr/////AAAAGdd9iX6K6E4vot4iYXx7M+sE9XVwwTL30eOKvSPorcY1yK25A3ZI/ajH4Ktmg+2K1R4sUibLK6BBgw/jKf/juUgjbwB6Wi/magAhEnKorWebeAg8AzjlhbgBE5mhmtkX60bedZF/qX/6/leqVhEd0XZvGn/3xv56Z5NMrOsZzJRMqWNujm4R8Q1fhjBqwIkFuhGzJ2jFzWktAebZcGaImLwgaOjNlYLebS8lxpDuP7bnu/AwsRo/up1zuvUoncDabDS4SFeh/Vjy2fIFApnq7GieBaL2uv4gssG2JUgYvXz3uvQAswf5b5k8v6z0120obXqyH3949gLYeyoY/uZ5g9r93aoyxr2jEwg7+tRezzit";
+
 
 
     //Declare Vuforia
@@ -85,7 +88,13 @@ public class RedDepot extends LinearOpMode {
         rightInnerDrive = hardwareMap.get(DcMotor.class, "rightInnerDrive");
         rightOuterDrive = hardwareMap.get(DcMotor.class, "rightOuterDrive");
 
+        slideMotor = hardwareMap.get(DcMotor.class, "slideMotor");
+        rotateMotor = hardwareMap.get(DcMotor.class, "rotateMotor");
+
         intake = hardwareMap.get(CRServo.class, "spinCR");
+
+        rotateMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        slideMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
         parameters.angleUnit           = BNO055IMU.AngleUnit.DEGREES;
@@ -99,8 +108,13 @@ public class RedDepot extends LinearOpMode {
         leftInnerDrive.setDirection(DcMotor.Direction.REVERSE);
         leftOuterDrive.setDirection(DcMotor.Direction.FORWARD);
 
-        rightInnerDrive.setDirection(DcMotor.Direction.FORWARD);
+        rightInnerDrive.setDirection(DcMotor.Direction.REVERSE);
         rightOuterDrive.setDirection(DcMotor.Direction.REVERSE);
+
+        slideMotor.setDirection(DcMotor.Direction.REVERSE);
+
+        intake.setDirection(CRServo.Direction.REVERSE);
+
         // The TFObjectDetector uses the camera frames from the VuforiaLocalizer, so we create that
         // first.
         initVuforia();
@@ -126,11 +140,7 @@ public class RedDepot extends LinearOpMode {
             }
 
             while (opModeIsActive()) {
-                //Drive power variables
-                double leftInnerPower;
-                double leftOuterPower;
-                double rightInnerPower;
-                double rightOuterPower;
+
                 if (tfod != null) {
                     // getUpdatedRecognitions() will return null if no new information is available since
                     // the last time that call was made.
@@ -157,6 +167,22 @@ public class RedDepot extends LinearOpMode {
                                     telemetry.addData("Gold Mineral Position", "Right");
                                 } else {
                                     telemetry.addData("Gold Mineral Position", "Center");
+                                    //Go forward slightly to get out of way of lander and move up to just in front of mineral.
+                                    //Set Motor to hover above ground and intake to spin.
+                                    //Push gently into the mineral to try and collect it.
+                                    //Assume we got it and pick the arm up.
+                                    //Rotate Counter-Clockwise 90 degrees
+                                    //Drive forward to clear the minerals
+                                    //Rotate a certain amount of degrees to face wall
+                                    //Drive into wall to align
+                                    //Back up a lil
+                                    //rotate clockwise 90 degrees
+                                    //drive forward to drop off our team marker
+                                    //drop off team marker
+                                    //back into the crater
+
+
+
                                 }
                             }
                         }
