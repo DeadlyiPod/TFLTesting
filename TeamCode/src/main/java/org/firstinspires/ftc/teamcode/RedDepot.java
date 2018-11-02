@@ -168,19 +168,33 @@ public class RedDepot extends LinearOpMode {
                                 } else {
                                     telemetry.addData("Gold Mineral Position", "Center");
                                     //Go forward slightly to get out of way of lander and move up to just in front of mineral.
+                                    gyroDrive(DRIVE_SPEED,3,0);
                                     //Set Motor to hover above ground and intake to spin.
-                                    //Push gently into the mineral to try and collect it.
+                                    rotateSlide(0.5,true,true);
+                                    intake(1);
+                                    //Push gently into the mineral to try and collect it and back up slightly
+                                    gyroDrive(0.3,10,0);
+                                    gyroDrive(DRIVE_SPEED,-5,0);
                                     //Assume we got it and pick the arm up.
+                                    rotateSlide(0.5,false,false);
                                     //Rotate Counter-Clockwise 90 degrees
+                                    gyroTurn(TURN_SPEED,-90);
                                     //Drive forward to clear the minerals
+                                    gyroDrive(DRIVE_SPEED,15,-90);
                                     //Rotate a certain amount of degrees to face wall
+                                    gyroTurn(TURN_SPEED,-45);
                                     //Drive into wall to align
+                                    gyroDrive(DRIVE_SPEED,15,-45);
                                     //Back up a lil
+                                    gyroDrive(0.3,-5,-45);
                                     //rotate clockwise 90 degrees
+                                    gyroTurn(TURN_SPEED,45);
                                     //drive forward to drop off our team marker
+                                    gyroDrive(DRIVE_SPEED,40,45);
                                     //drop off team marker
-                                    //back into the crater
 
+                                    //back into the crater
+                                    gyroDrive(DRIVE_SPEED,-96,45);
 
 
                                 }
@@ -197,6 +211,50 @@ public class RedDepot extends LinearOpMode {
         }
     }
 
+    //Rotate Slider Method
+    private void rotateSlide(double speed,
+                             boolean down,
+                             boolean hover) {
+        int ticks;
+        if (down){
+            ticks = -5000;
+        }else {
+            ticks = -500;
+        }
+
+        if(opModeIsActive()){
+            //Set a target position
+            rotateMotor.setTargetPosition(ticks);
+            //Set to run to position
+            rotateMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+            //Set Speed
+            rotateMotor.setPower(Math.abs(speed));
+
+            while (opModeIsActive() && rotateMotor.isBusy()) {
+
+                // Display it for the driver.
+                telemetry.addData("Path1",  "Running to: " + ticks);
+                telemetry.addData("Path2",  "Running at: " + rotateMotor.getCurrentPosition());
+                telemetry.update();
+            }
+
+            //if hover is true then try and hold intake up a bit. Otherwise, set to 0 power.
+            if(hover){
+                rotateMotor.setPower(0.2);
+            }else {
+                rotateMotor.setPower(0);
+            }
+            //Go back to run using an encoder.
+            rotateMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        }
+    }
+    //Rotate Intake Method
+    private void intake (double speed){
+        if(opModeIsActive()){
+            intake.setPower(speed);
+        }
+    }
     //Init Vuforia method
     private void initVuforia() {
         /*
