@@ -6,6 +6,8 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.ClassFactory;
@@ -45,9 +47,11 @@ public class RedDepot extends LinearOpMode {
 
     private CRServo intake = null;
 
+    String mineralPlace = "No place detected!";
     // The IMU sensor object
     BNO055IMU imu;
 
+    boolean isDown = false;
     static final double     COUNTS_PER_MOTOR_REV    = 1120 ;    // eg: TETRIX Motor Encoder
     static final double     DRIVE_GEAR_REDUCTION    = 1 ;     // This is < 1.0 if geared UP
     static final double     WHEEL_DIAMETER_INCHES   = 4.0 ;     // For figuring circumference
@@ -56,11 +60,11 @@ public class RedDepot extends LinearOpMode {
     // These constants define the desired driving/control characteristics
     // The can/should be tweaked to suite the specific robot drive train.
     static final double     DRIVE_SPEED             = 0.7;     // Nominal speed for better accuracy.
-    static final double     TURN_SPEED              = 0.5;     // Nominal half speed for better accuracy.
+    static final double     TURN_SPEED              = 0.4;     // Nominal half speed for better accuracy.
 
     static final double     HEADING_THRESHOLD       = 1 ;      // As tight as we can make it with an integer gyro
-    static final double     P_TURN_COEFF            = 0.1;     // Larger is more responsive, but also less stable
-    static final double     P_DRIVE_COEFF           = 0.15;     // Larger is more responsive, but also less stable
+    static final double     P_TURN_COEFF            = 0.05;     // Larger is more responsive, but also less stable
+    static final double     P_DRIVE_COEFF           = 0.12;     // Larger is more responsive, but also less stable
 
     private static final String TFOD_MODEL_ASSET = "RoverRuckus.tflite";
     private static final String LABEL_GOLD_MINERAL = "Gold Mineral";
@@ -69,7 +73,7 @@ public class RedDepot extends LinearOpMode {
     //Vuforia License
     private static final String VUFORIA_KEY = "AV4rzZr/////AAAAGdd9iX6K6E4vot4iYXx7M+sE9XVwwTL30eOKvSPorcY1yK25A3ZI/ajH4Ktmg+2K1R4sUibLK6BBgw/jKf/juUgjbwB6Wi/magAhEnKorWebeAg8AzjlhbgBE5mhmtkX60bedZF/qX/6/leqVhEd0XZvGn/3xv56Z5NMrOsZzJRMqWNujm4R8Q1fhjBqwIkFuhGzJ2jFzWktAebZcGaImLwgaOjNlYLebS8lxpDuP7bnu/AwsRo/up1zuvUoncDabDS4SFeh/Vjy2fIFApnq7GieBaL2uv4gssG2JUgYvXz3uvQAswf5b5k8v6z0120obXqyH3949gLYeyoY/uZ5g9r93aoyxr2jEwg7+tRezzit";
 
-
+    private ElapsedTime runtime = new ElapsedTime();
 
     //Declare Vuforia
     private VuforiaLocalizer vuforia;
@@ -96,6 +100,20 @@ public class RedDepot extends LinearOpMode {
         rotateMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         slideMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
+        leftOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rightOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        leftOuterDrive.setDirection(DcMotor.Direction.FORWARD);
+        rightOuterDrive.setDirection(DcMotor.Direction.REVERSE);
+
+        slideMotor.setDirection(DcMotor.Direction.REVERSE);
+
+
+        intake.setDirection(CRServo.Direction.REVERSE);
+
+        telemetry.addData("Motors/Servos", "Initialized");
+        telemetry.update();
+
         BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
         parameters.angleUnit           = BNO055IMU.AngleUnit.DEGREES;
         parameters.accelUnit           = BNO055IMU.AccelUnit.METERS_PERSEC_PERSEC;
@@ -103,30 +121,29 @@ public class RedDepot extends LinearOpMode {
         parameters.loggingEnabled      = true;
         parameters.loggingTag          = "IMU";
         parameters.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
+        telemetry.addData("imu", "not initialized");
+        telemetry.update();
 
+        imu = hardwareMap.get(BNO055IMU.class, "imu");
+        imu.initialize(parameters);
+        telemetry.addData("imu", "initialized");
+        telemetry.update();
         //Set Motor Polarities
-        leftInnerDrive.setDirection(DcMotor.Direction.REVERSE);
-        leftOuterDrive.setDirection(DcMotor.Direction.FORWARD);
 
-        rightInnerDrive.setDirection(DcMotor.Direction.REVERSE);
-        rightOuterDrive.setDirection(DcMotor.Direction.REVERSE);
-
-        slideMotor.setDirection(DcMotor.Direction.REVERSE);
-
-        intake.setDirection(CRServo.Direction.REVERSE);
 
         // The TFObjectDetector uses the camera frames from the VuforiaLocalizer, so we create that
         // first.
         initVuforia();
 
-        imu = hardwareMap.get(BNO055IMU.class, "imu");
-        imu.initialize(parameters);
-
+        telemetry.addData("Vuforia", "initialized");
+        telemetry.update();
         if (ClassFactory.getInstance().canCreateTFObjectDetector()) {
             initTfod();
         } else {
             telemetry.addData("Sorry!", "This device is not compatible with TFOD");
         }
+        telemetry.addData("tfod", "initialized");
+        telemetry.update();
 
         /** Wait for the game to begin */
         telemetry.addData(">", "Press Play to start tracking");
@@ -138,9 +155,8 @@ public class RedDepot extends LinearOpMode {
             if (tfod != null) {
                 tfod.activate();
             }
-
-            while (opModeIsActive()) {
-
+            runtime.reset();
+            while (opModeIsActive() && runtime.seconds() < 4) {
                 if (tfod != null) {
                     // getUpdatedRecognitions() will return null if no new information is available since
                     // the last time that call was made.
@@ -163,40 +179,13 @@ public class RedDepot extends LinearOpMode {
                             if (goldMineralX != -1 && silverMineral1X != -1 && silverMineral2X != -1) {
                                 if (goldMineralX < silverMineral1X && goldMineralX < silverMineral2X) {
                                     telemetry.addData("Gold Mineral Position", "Left");
+                                    mineralPlace = "Left";
                                 } else if (goldMineralX > silverMineral1X && goldMineralX > silverMineral2X) {
                                     telemetry.addData("Gold Mineral Position", "Right");
+                                    mineralPlace = "Right";
                                 } else {
                                     telemetry.addData("Gold Mineral Position", "Center");
-                                    //Go forward slightly to get out of way of lander and move up to just in front of mineral.
-                                    gyroDrive(DRIVE_SPEED,3,0);
-                                    //Set Motor to hover above ground and intake to spin.
-                                    rotateSlide(0.5,true,true);
-                                    intake(1);
-                                    //Push gently into the mineral to try and collect it and back up slightly
-                                    gyroDrive(0.3,10,0);
-                                    gyroDrive(DRIVE_SPEED,-5,0);
-                                    //Assume we got it and pick the arm up.
-                                    rotateSlide(0.5,false,false);
-                                    //Rotate Counter-Clockwise 90 degrees
-                                    gyroTurn(TURN_SPEED,-90);
-                                    //Drive forward to clear the minerals
-                                    gyroDrive(DRIVE_SPEED,15,-90);
-                                    //Rotate a certain amount of degrees to face wall
-                                    gyroTurn(TURN_SPEED,-45);
-                                    //Drive into wall to align
-                                    gyroDrive(DRIVE_SPEED,15,-45);
-                                    //Back up a lil
-                                    gyroDrive(0.3,-5,-45);
-                                    //rotate clockwise 90 degrees
-                                    gyroTurn(TURN_SPEED,45);
-                                    //drive forward to drop off our team marker
-                                    gyroDrive(DRIVE_SPEED,40,45);
-                                    //drop off team marker
-
-                                    //back into the crater
-                                    gyroDrive(DRIVE_SPEED,-96,45);
-
-
+                                    mineralPlace = "Center";
                                 }
                             }
                         }
@@ -204,47 +193,148 @@ public class RedDepot extends LinearOpMode {
                     }
                 }
             }
-        }
+            if (mineralPlace.equalsIgnoreCase("Center")){
+                telemetry.addData("Hellooo", "hi");
+                telemetry.update();
+                //Go forward slightly to get out of way of lander and move up to just in front of mineral
+                gyroDrive(DRIVE_SPEED,5,0);
+                //Set Motor to hover above ground and intake to spin.
+                rotateSlide(true,false);
+                intake(-1);
+                sleep(750);
+                //Push gently into the mineral to try and collect it and back up slightly.
+                gyroDrive(0.3,30,0);
+                intake(0);
+                rotateSlide(false,false);
+                gyroDrive(0.5,-15,0);
+                //Rotate Counter-Clockwise 90 degrees
+                gyroTurn(TURN_SPEED,-90);
+                /*Drive forward to clear the minerals
+                gyroDrive(DRIVE_SPEED,15,-90);
+                //Rotate a certain amount of degrees to face wall
+                gyroTurn(TURN_SPEED,-45);
+                //Drive into wall to align
+                gyroDrive(DRIVE_SPEED,15,-45);
+                //Back up a lil
+                gyroDrive(0.3,-5,-45);
+                //rotate clockwise 90 degrees
+                gyroTurn(TURN_SPEED,45);
+                //drive forward to drop off our team marker
+                gyroDrive(DRIVE_SPEED,40,45);
+                //drop off team marker
 
+                //back into the crater
+                gyroDrive(DRIVE_SPEED,-96,45);
+                */
+            }else if (mineralPlace.equalsIgnoreCase("Left")){
+                //Go forward slightly to get out of way of lander and move up to just in front of mineral
+                gyroDrive(DRIVE_SPEED,5,0);
+                gyroTurn(TURN_SPEED,-25);
+                //Set Motor to hover above ground and intake to spin.
+                rotateSlide(true,false);
+                intake(-1);
+                sleep(750);
+                //Push gently into the mineral to try and collect it and back up slightly.
+                gyroDrive(0.3,30,0);
+                intake(0);
+                rotateSlide(false,false);
+                gyroDrive(0.5,-15,0);
+                //Rotate Counter-Clockwise 90 degrees
+                gyroTurn(TURN_SPEED,-90);
+                /*Drive forward to clear the minerals
+                gyroDrive(DRIVE_SPEED,15,-90);
+                //Rotate a certain amount of degrees to face wall
+                gyroTurn(TURN_SPEED,-45);
+                //Drive into wall to align
+                gyroDrive(DRIVE_SPEED,15,-45);
+                //Back up a lil
+                gyroDrive(0.3,-5,-45);
+                //rotate clockwise 90 degrees
+                gyroTurn(TURN_SPEED,45);
+                //drive forward to drop off our team marker
+                gyroDrive(DRIVE_SPEED,40,45);
+                //drop off team marker
+
+                //back into the crater
+                gyroDrive(DRIVE_SPEED,-96,45);
+                */
+            }else if (mineralPlace.equalsIgnoreCase("Right")){
+                //Go forward slightly to get out of way of lander and move up to just in front of mineral
+                gyroDrive(DRIVE_SPEED,5,0);
+                gyroTurn(TURN_SPEED,25);
+                //Set Motor to hover above ground and intake to spin.
+                rotateSlide(true,false);
+                intake(-1);
+                sleep(750);
+                //Push gently into the mineral to try and collect it and back up slightly.
+                gyroDrive(0.3,30,0);
+                intake(0);
+                rotateSlide(false,false);
+                gyroDrive(0.5,-15,0);
+                //Rotate Counter-Clockwise 90 degrees
+                gyroTurn(TURN_SPEED,-90);
+                /*Drive forward to clear the minerals
+                gyroDrive(DRIVE_SPEED,15,-90);
+                //Rotate a certain amount of degrees to face wall
+                gyroTurn(TURN_SPEED,-45);
+                //Drive into wall to align
+                gyroDrive(DRIVE_SPEED,15,-45);
+                //Back up a lil
+                gyroDrive(0.3,-5,-45);
+                //rotate clockwise 90 degrees
+                gyroTurn(TURN_SPEED,45);
+                //drive forward to drop off our team marker
+                gyroDrive(DRIVE_SPEED,40,45);
+                //drop off team marker
+
+                //back into the crater
+                gyroDrive(DRIVE_SPEED,-96,45);
+                */
+            }
+
+        }
         if (tfod != null) {
             tfod.shutdown();
         }
+
     }
 
     //Rotate Slider Method
-    private void rotateSlide(double speed,
-                             boolean down,
+    private void rotateSlide(boolean down,
                              boolean hover) {
-        int ticks;
-        if (down){
-            ticks = -5000;
-        }else {
-            ticks = -500;
-        }
+
+
 
         if(opModeIsActive()){
-            //Set a target position
-            rotateMotor.setTargetPosition(ticks);
-            //Set to run to position
-            rotateMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-
-            //Set Speed
-            rotateMotor.setPower(Math.abs(speed));
-
+            if(down) {
+                //raise up
+                rotateMotor.setPower(-0.5);
+                //let it go down
+                sleep(550);
+                rotateMotor.setPower(0);
+            }else if (!down){
+                rotateMotor.setPower(0.5);
+                sleep(500);
+                rotateMotor.setPower(0);
+            }
             while (opModeIsActive() && rotateMotor.isBusy()) {
 
                 // Display it for the driver.
-                telemetry.addData("Path1",  "Running to: " + ticks);
+                telemetry.addData("Path1",  "Running to: idk");
                 telemetry.addData("Path2",  "Running at: " + rotateMotor.getCurrentPosition());
                 telemetry.update();
             }
 
             //if hover is true then try and hold intake up a bit. Otherwise, set to 0 power.
             if(hover){
+                rotateMotor.setPower(0.4);
+                sleep(200);
                 rotateMotor.setPower(0.2);
             }else {
                 rotateMotor.setPower(0);
             }
+
+
             //Go back to run using an encoder.
             rotateMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
@@ -281,6 +371,69 @@ public class RedDepot extends LinearOpMode {
         tfod.loadModelFromAsset(TFOD_MODEL_ASSET, LABEL_GOLD_MINERAL, LABEL_SILVER_MINERAL);
     }
 
+    public void encoderDrive(double speed,
+                             double leftInches, double rightInches,
+                             double timeoutS) {
+        int newLeftTarget;
+        int newRightTarget;
+
+
+        // Ensure that the opmode is still active
+        if (opModeIsActive()) {
+
+            // Determine new target position, and pass to motor controller
+            newLeftTarget = (leftInnerDrive.getCurrentPosition() + (int) (leftInches * COUNTS_PER_INCH));
+            newRightTarget = rightInnerDrive.getCurrentPosition() + (int)(rightInches * COUNTS_PER_INCH);
+            leftInnerDrive.setTargetPosition(newLeftTarget);
+            rightInnerDrive.setTargetPosition(newRightTarget);
+
+            // Turn On RUN_TO_POSITION
+            leftInnerDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            rightInnerDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            leftOuterDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            rightOuterDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+            // reset the timeout time and start motion.
+            runtime.reset();
+            leftInnerDrive.setPower(Math.abs(speed));
+            rightInnerDrive.setPower(Math.abs(speed));
+            leftOuterDrive.setPower(Math.abs(speed));
+            rightOuterDrive.setPower(Math.abs(speed));
+
+            // keep looping while we are still active, and there is time left, and both motors are running.
+            // Note: We use (isBusy() && isBusy()) in the loop test, which means that when EITHER motor hits
+            // its target position, the motion will stop.  This is "safer" in the event that the robot will
+            // always end the motion as soon as possible.
+            // However, if you require that BOTH motors have finished their moves before the robot continues
+            // onto the next step, use (isBusy() || isBusy()) in the loop test.
+            while (opModeIsActive() &&
+                    (runtime.seconds() < timeoutS) &&
+                    (leftInnerDrive.isBusy() && rightInnerDrive.isBusy() && rightOuterDrive.isBusy() && leftOuterDrive.isBusy())) {
+
+                // Display it for the driver.
+                telemetry.addData("Path1",  "Running to %7d :%7d", newLeftTarget,  newRightTarget);
+                telemetry.addData("Path2",  "Running at %7d :%7d",
+                        leftInnerDrive.getCurrentPosition(),
+                        rightInnerDrive.getCurrentPosition());
+                telemetry.update();
+            }
+
+            // Stop all motion;
+            leftInnerDrive.setPower(0);
+            rightInnerDrive.setPower(0);
+            leftOuterDrive.setPower(0);
+            rightOuterDrive.setPower(0);
+
+            // Turn off RUN_TO_POSITION
+            leftInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            rightInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            leftOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            rightOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+            //  sleep(250);   // optional pause after each move
+        }
+    }
+
     public void gyroDrive ( double speed,
                             double distance,
                             double angle) {
@@ -299,24 +452,24 @@ public class RedDepot extends LinearOpMode {
 
             // Determine new target position, and pass to motor controller
             moveCounts = (int)(distance * COUNTS_PER_INCH);
-            newLeftTarget = leftInnerDrive.getCurrentPosition() + moveCounts;
-            newRightTarget = rightInnerDrive.getCurrentPosition() + moveCounts;
+            newLeftTarget = leftOuterDrive.getCurrentPosition() + moveCounts;
+            newRightTarget = rightOuterDrive.getCurrentPosition() + moveCounts;
 
             // Set Target and Turn On RUN_TO_POSITION
-            leftInnerDrive.setTargetPosition(newLeftTarget);
-            rightInnerDrive.setTargetPosition(newRightTarget);
+            leftOuterDrive.setTargetPosition(newLeftTarget);
+            rightOuterDrive.setTargetPosition(newRightTarget);
 
-            leftInnerDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightInnerDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            leftOuterDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            rightOuterDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 
             // start motion.
             speed = Range.clip(Math.abs(speed), 0.0, 1.0);
-            leftInnerDrive.setPower(speed);
-            rightInnerDrive.setPower(speed);
+            leftOuterDrive.setPower(speed);
+            rightOuterDrive.setPower(speed);
 
             // keep looping while we are still active, and BOTH motors are running.
             while (opModeIsActive() &&
-                    (leftInnerDrive.isBusy() && rightInnerDrive.isBusy())) {
+                    (leftOuterDrive.isBusy() && rightOuterDrive.isBusy())) {
                 angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
                 gravity  = imu.getGravity();
                 // adjust relative speed based on heading error.
@@ -338,29 +491,23 @@ public class RedDepot extends LinearOpMode {
                     rightSpeed /= max;
                 }
 
-                leftInnerDrive.setPower(leftSpeed);
                 leftOuterDrive.setPower(leftSpeed);
-                rightInnerDrive.setPower(rightSpeed);
                 rightOuterDrive.setPower(rightSpeed);
 
                 // Display drive status for the driver.
                 telemetry.addData("Err/St",  "%5.1f/%5.1f",  error, steer);
                 telemetry.addData("Target",  "%7d:%7d",      newLeftTarget,  newRightTarget);
-                telemetry.addData("Actual",  "%7d:%7d",      leftInnerDrive.getCurrentPosition(),
-                        rightInnerDrive.getCurrentPosition());
+                telemetry.addData("Actual",  "%7d:%7d",      leftOuterDrive.getCurrentPosition(),
+                        rightOuterDrive.getCurrentPosition());
                 telemetry.addData("Speed",   "%5.2f:%5.2f",  leftSpeed, rightSpeed);
                 telemetry.update();
             }
 
             // Stop all motion;
-            leftInnerDrive.setPower(0);
-            rightInnerDrive.setPower(0);
             leftOuterDrive.setPower(0);
             rightOuterDrive.setPower(0);
 
             // Turn off RUN_TO_POSITION
-            leftInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            rightInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             leftOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             rightOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
@@ -398,8 +545,6 @@ public class RedDepot extends LinearOpMode {
         }
 
         // Send desired speeds to motors.
-        leftInnerDrive.setPower(leftSpeed);
-        rightInnerDrive.setPower(rightSpeed);
         leftOuterDrive.setPower(leftSpeed);
         rightOuterDrive.setPower(rightSpeed);
 

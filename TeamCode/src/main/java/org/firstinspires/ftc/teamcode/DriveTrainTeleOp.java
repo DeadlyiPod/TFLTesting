@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
@@ -28,7 +29,8 @@ public class DriveTrainTeleOp extends LinearOpMode{
     private DcMotor slideMotor = null;
     private DcMotor rotateMotor = null;
 
-    private CRServo intake = null;
+    //private CRServo intake = null;
+    private Servo block = null;
 
 
     //TeleOp Driving Settings
@@ -51,7 +53,8 @@ public class DriveTrainTeleOp extends LinearOpMode{
         slideMotor = hardwareMap.get(DcMotor.class, "slideMotor");
         rotateMotor = hardwareMap.get(DcMotor.class, "rotateMotor");
 
-        intake = hardwareMap.get(CRServo.class, "spinCR");
+        //intake = hardwareMap.get(CRServo.class, "spinCR");
+        block = hardwareMap.get(Servo.class, "BlockServo");
 
         rotateMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         slideMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -60,12 +63,16 @@ public class DriveTrainTeleOp extends LinearOpMode{
         leftInnerDrive.setDirection(DcMotor.Direction.REVERSE);
         leftOuterDrive.setDirection(DcMotor.Direction.FORWARD);
 
-        rightInnerDrive.setDirection(DcMotor.Direction.REVERSE);
+        rightInnerDrive.setDirection(DcMotor.Direction.FORWARD);
         rightOuterDrive.setDirection(DcMotor.Direction.REVERSE);
 
         slideMotor.setDirection(DcMotor.Direction.REVERSE);
 
-        intake.setDirection(CRServo.Direction.REVERSE);
+        //intake.setDirection(CRServo.Direction.REVERSE);
+
+
+        leftInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rightInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         //wait for driver to press PLAY
         waitForStart();
@@ -85,7 +92,7 @@ public class DriveTrainTeleOp extends LinearOpMode{
                 double slidePower;
                 double rotatePower;
 
-                double intakePower;
+                //double intakePower;
 
                 //Tank mode controls
 
@@ -104,14 +111,18 @@ public class DriveTrainTeleOp extends LinearOpMode{
                 rightInnerPower = Range.scale(rightInnerPower,-1.00,1.00, -speedScale, speedScale);
                 rightOuterPower = Range.scale(rightOuterPower,-1.00,1.00, -speedScale, speedScale);
 
-                intakePower = Range.clip(-gamepad2.left_trigger + gamepad2.right_trigger,-1,1);
+                //intakePower = Range.clip(-gamepad2.left_trigger + gamepad2.right_trigger,-1,1);
 
                 slidePower = Range.scale(gamepad2.left_stick_y,-1.00,1.00, -0.5,0.5);
                 rotatePower = Range.scale(gamepad2.right_stick_y,-1.00,1.00,-0.8,0.8);
 
-                intake.setPower(intakePower);
+                //intake.setPower(intakePower);
 
-
+                if (gamepad2.x){
+                    block.setPosition(0.35);
+                }else {
+                    block.setPosition(0.05);
+                }
 
                 //Set Power
                 leftInnerDrive.setPower(leftInnerPower);
@@ -126,7 +137,9 @@ public class DriveTrainTeleOp extends LinearOpMode{
 
                 //Runtime, and Power Variables being sent to motor
                 telemetry.addData("Status", "Run Time: " + runtime.toString());
-                telemetry.addData("Motors", "leftInner (%.2f), leftOuter (%.2f), rightInner (%.2f), rightOuter (%.2f)", leftInnerPower,leftOuterPower,rightInnerPower,rightOuterPower);
+                telemetry.addData("InnerMotorEncPos","%7d + %7d",leftInnerDrive.getCurrentPosition(),leftOuterDrive.getCurrentPosition());
+                telemetry.addData("Motors", "Rotate Power (%.2f), leftOuter (%.2f), rightInner (%.2f), rightOuter (%.2f)", rotatePower,leftOuterPower,rightInnerPower,rightOuterPower);
+                telemetry.addData("Rotate Position", rotateMotor.getCurrentPosition());
                 telemetry.update();
             } //Driving END
 
