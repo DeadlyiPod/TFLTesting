@@ -29,12 +29,14 @@ public class DriveTrainTeleOp extends LinearOpMode{
     private DcMotor slideMotor = null;
     private DcMotor rotateMotor = null;
 
-    //private CRServo intake = null;
+    private CRServo intake = null;
     private Servo block = null;
 
 
     //TeleOp Driving Settings
-    double speedScale = 0.33;
+    double speedScale;
+    double speedScaleSlow = 0.33;
+    double speedScaleFast = 0.7;
 
 
     @Override
@@ -53,7 +55,7 @@ public class DriveTrainTeleOp extends LinearOpMode{
         slideMotor = hardwareMap.get(DcMotor.class, "slideMotor");
         rotateMotor = hardwareMap.get(DcMotor.class, "rotateMotor");
 
-        //intake = hardwareMap.get(CRServo.class, "spinCR");
+        intake = hardwareMap.get(CRServo.class, "spinCR");
         block = hardwareMap.get(Servo.class, "BlockServo");
 
         rotateMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -68,14 +70,15 @@ public class DriveTrainTeleOp extends LinearOpMode{
 
         slideMotor.setDirection(DcMotor.Direction.REVERSE);
 
-        //intake.setDirection(CRServo.Direction.REVERSE);
+        intake.setDirection(CRServo.Direction.REVERSE);
 
 
         leftInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         rightInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         //wait for driver to press PLAY
-        waitForStart();
+        while (!opModeIsActive()&&!isStopRequested()) {
+            telemetry.addData("Status", "Waiting in Init");     telemetry.update(); }
         runtime.reset();
 
         //run until driver presses STOP
@@ -92,7 +95,7 @@ public class DriveTrainTeleOp extends LinearOpMode{
                 double slidePower;
                 double rotatePower;
 
-                //double intakePower;
+                double intakePower;
 
                 //Tank mode controls
 
@@ -105,18 +108,24 @@ public class DriveTrainTeleOp extends LinearOpMode{
 
 
                 //Scale power value for more controllable driving
+                if(gamepad1.left_bumper){
+                    speedScale = speedScaleFast;
+                } else {
+                    speedScale = speedScaleSlow;
+                }
+
                 leftInnerPower = Range.scale(leftInnerPower,-1.00,1.00, -speedScale, speedScale);
                 leftOuterPower = Range.scale(leftOuterPower,-1.00,1.00, -speedScale, speedScale);
 
                 rightInnerPower = Range.scale(rightInnerPower,-1.00,1.00, -speedScale, speedScale);
                 rightOuterPower = Range.scale(rightOuterPower,-1.00,1.00, -speedScale, speedScale);
 
-                //intakePower = Range.clip(-gamepad2.left_trigger + gamepad2.right_trigger,-1,1);
+                intakePower = Range.clip(-gamepad2.left_trigger + gamepad2.right_trigger,-1,1);
 
                 slidePower = Range.scale(gamepad2.left_stick_y,-1.00,1.00, -0.5,0.5);
-                rotatePower = Range.scale(gamepad2.right_stick_y,-1.00,1.00,-0.8,0.8);
+                rotatePower = Range.scale(-gamepad2.right_stick_y,-1.00,1.00,-0.8,0.8);
 
-                //intake.setPower(intakePower);
+                intake.setPower(intakePower);
 
                 if (gamepad2.x){
                     block.setPosition(0.35);

@@ -47,33 +47,34 @@ public class RedDepot extends LinearOpMode {
 
     private CRServo intake = null;
 
-    String mineralPlace = "No place detected!";
+    String mineralPlace = "No place detected";
+
     // The IMU sensor object
     BNO055IMU imu;
 
     boolean isDown = false;
+
+    //Encoder Drive Settings
     static final double     COUNTS_PER_MOTOR_REV    = 1120 ;    // eg: TETRIX Motor Encoder
     static final double     DRIVE_GEAR_REDUCTION    = 1 ;     // This is < 1.0 if geared UP
     static final double     WHEEL_DIAMETER_INCHES   = 4.0 ;     // For figuring circumference
     static final double     COUNTS_PER_INCH         = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) / (WHEEL_DIAMETER_INCHES * 3.1415);
 
     // These constants define the desired driving/control characteristics
-    // The can/should be tweaked to suite the specific robot drive train.
     static final double     DRIVE_SPEED             = 0.7;     // Nominal speed for better accuracy.
     static final double     TURN_SPEED              = 0.4;     // Nominal half speed for better accuracy.
 
+    //Gyroscopic Drive Settings
     static final double     HEADING_THRESHOLD       = 1 ;      // As tight as we can make it with an integer gyro
     static final double     P_TURN_COEFF            = 0.05;     // Larger is more responsive, but also less stable
-    static final double     P_DRIVE_COEFF           = 0.12;     // Larger is more responsive, but also less stable
+    static final double     P_DRIVE_COEFF           = 0.05;     // Larger is more responsive, but also less stable
 
+    //Vuforia files?
     private static final String TFOD_MODEL_ASSET = "RoverRuckus.tflite";
     private static final String LABEL_GOLD_MINERAL = "Gold Mineral";
     private static final String LABEL_SILVER_MINERAL = "Silver Mineral";
-
     //Vuforia License
     private static final String VUFORIA_KEY = "AV4rzZr/////AAAAGdd9iX6K6E4vot4iYXx7M+sE9XVwwTL30eOKvSPorcY1yK25A3ZI/ajH4Ktmg+2K1R4sUibLK6BBgw/jKf/juUgjbwB6Wi/magAhEnKorWebeAg8AzjlhbgBE5mhmtkX60bedZF/qX/6/leqVhEd0XZvGn/3xv56Z5NMrOsZzJRMqWNujm4R8Q1fhjBqwIkFuhGzJ2jFzWktAebZcGaImLwgaOjNlYLebS8lxpDuP7bnu/AwsRo/up1zuvUoncDabDS4SFeh/Vjy2fIFApnq7GieBaL2uv4gssG2JUgYvXz3uvQAswf5b5k8v6z0120obXqyH3949gLYeyoY/uZ5g9r93aoyxr2jEwg7+tRezzit";
-
-    private ElapsedTime runtime = new ElapsedTime();
 
     //Declare Vuforia
     private VuforiaLocalizer vuforia;
@@ -82,8 +83,13 @@ public class RedDepot extends LinearOpMode {
     private TFObjectDetector tfod;
 
 
+    private ElapsedTime runtime;
+
+
+
     @Override
     public void runOpMode() {
+        runtime = new ElapsedTime();
         //Initialize Motors/Servos
         //Initialize hardware variables
         leftInnerDrive = hardwareMap.get(DcMotor.class, "leftInnerDrive");
@@ -107,7 +113,7 @@ public class RedDepot extends LinearOpMode {
         rightOuterDrive.setDirection(DcMotor.Direction.REVERSE);
 
         slideMotor.setDirection(DcMotor.Direction.REVERSE);
-
+        rotateMotor.setDirection(DcMotor.Direction.REVERSE);
 
         intake.setDirection(CRServo.Direction.REVERSE);
 
@@ -134,9 +140,9 @@ public class RedDepot extends LinearOpMode {
         // The TFObjectDetector uses the camera frames from the VuforiaLocalizer, so we create that
         // first.
         initVuforia();
-
         telemetry.addData("Vuforia", "initialized");
         telemetry.update();
+
         if (ClassFactory.getInstance().canCreateTFObjectDetector()) {
             initTfod();
         } else {
@@ -145,10 +151,15 @@ public class RedDepot extends LinearOpMode {
         telemetry.addData("tfod", "initialized");
         telemetry.update();
 
+
+
+
+        runtime.reset();
         /** Wait for the game to begin */
         telemetry.addData(">", "Press Play to start tracking");
         telemetry.update();
-        waitForStart();
+        while (!opModeIsActive()&&!isStopRequested()) {
+            telemetry.addData("Status", "Waiting in Init");     telemetry.update(); }
 
         if (opModeIsActive()) {
             /** Activate Tensor Flow Object Detection. */
@@ -194,102 +205,100 @@ public class RedDepot extends LinearOpMode {
                 }
             }
             if (mineralPlace.equalsIgnoreCase("Center")){
-                telemetry.addData("Hellooo", "hi");
+                telemetry.addData("Case", "Center");
                 telemetry.update();
-                //Go forward slightly to get out of way of lander and move up to just in front of mineral
-                gyroDrive(DRIVE_SPEED,5,0);
-                //Set Motor to hover above ground and intake to spin.
-                rotateSlide(true,false);
-                intake(-1);
-                sleep(750);
-                //Push gently into the mineral to try and collect it and back up slightly.
-                gyroDrive(0.3,30,0);
-                intake(0);
-                rotateSlide(false,false);
-                gyroDrive(0.5,-15,0);
-                //Rotate Counter-Clockwise 90 degrees
-                gyroTurn(TURN_SPEED,-90);
-                /*Drive forward to clear the minerals
-                gyroDrive(DRIVE_SPEED,15,-90);
-                //Rotate a certain amount of degrees to face wall
-                gyroTurn(TURN_SPEED,-45);
-                //Drive into wall to align
-                gyroDrive(DRIVE_SPEED,15,-45);
-                //Back up a lil
-                gyroDrive(0.3,-5,-45);
-                //rotate clockwise 90 degrees
-                gyroTurn(TURN_SPEED,45);
-                //drive forward to drop off our team marker
-                gyroDrive(DRIVE_SPEED,40,45);
-                //drop off team marker
 
-                //back into the crater
-                gyroDrive(DRIVE_SPEED,-96,45);
-                */
-            }else if (mineralPlace.equalsIgnoreCase("Left")){
-                //Go forward slightly to get out of way of lander and move up to just in front of mineral
-                gyroDrive(DRIVE_SPEED,5,0);
-                gyroTurn(TURN_SPEED,-25);
-                //Set Motor to hover above ground and intake to spin.
+                //drive the mineral to depot
+                gyroTurn(TURN_SPEED,-10);
+                gyroDrive(DRIVE_SPEED,53,-7);
+                //set marker down
                 rotateSlide(true,false);
-                intake(-1);
+                //pause
                 sleep(750);
-                //Push gently into the mineral to try and collect it and back up slightly.
-                gyroDrive(0.3,30,0);
-                intake(0);
+                //Rotate back up
                 rotateSlide(false,false);
-                gyroDrive(0.5,-15,0);
-                //Rotate Counter-Clockwise 90 degrees
+                //back up
+                gyroDrive(0.4,-7,0);
+                //turn to pass other stuff
                 gyroTurn(TURN_SPEED,-90);
-                /*Drive forward to clear the minerals
+                //drive forward
                 gyroDrive(DRIVE_SPEED,15,-90);
-                //Rotate a certain amount of degrees to face wall
-                gyroTurn(TURN_SPEED,-45);
-                //Drive into wall to align
-                gyroDrive(DRIVE_SPEED,15,-45);
-                //Back up a lil
-                gyroDrive(0.3,-5,-45);
-                //rotate clockwise 90 degrees
-                gyroTurn(TURN_SPEED,45);
-                //drive forward to drop off our team marker
-                gyroDrive(DRIVE_SPEED,40,45);
-                //drop off team marker
-
-                //back into the crater
-                gyroDrive(DRIVE_SPEED,-96,45);
-                */
+                //rotate a lil
+                gyroTurn(TURN_SPEED,-135);
+                //Drive into crater
+                gyroDrive(DRIVE_SPEED,60,-135);
             }else if (mineralPlace.equalsIgnoreCase("Right")){
-                //Go forward slightly to get out of way of lander and move up to just in front of mineral
-                gyroDrive(DRIVE_SPEED,5,0);
-                gyroTurn(TURN_SPEED,25);
-                //Set Motor to hover above ground and intake to spin.
-                rotateSlide(true,false);
-                intake(-1);
-                sleep(750);
-                //Push gently into the mineral to try and collect it and back up slightly.
-                gyroDrive(0.3,30,0);
-                intake(0);
-                rotateSlide(false,false);
-                gyroDrive(0.5,-15,0);
-                //Rotate Counter-Clockwise 90 degrees
-                gyroTurn(TURN_SPEED,-90);
-                /*Drive forward to clear the minerals
-                gyroDrive(DRIVE_SPEED,15,-90);
-                //Rotate a certain amount of degrees to face wall
-                gyroTurn(TURN_SPEED,-45);
-                //Drive into wall to align
-                gyroDrive(DRIVE_SPEED,15,-45);
-                //Back up a lil
-                gyroDrive(0.3,-5,-45);
-                //rotate clockwise 90 degrees
-                gyroTurn(TURN_SPEED,45);
-                //drive forward to drop off our team marker
-                gyroDrive(DRIVE_SPEED,40,45);
-                //drop off team marker
+                telemetry.addData("Case", "Right");
+                telemetry.update();
 
-                //back into the crater
-                gyroDrive(DRIVE_SPEED,-96,45);
-                */
+                //drive the mineral to depot
+                gyroDrive(DRIVE_SPEED,17,0);
+                gyroTurn(TURN_SPEED,90);
+                gyroDrive(DRIVE_SPEED,18,90);
+                //Turn to face mineral
+                gyroTurn(TURN_SPEED,-20);
+                //Drive mineral into depot
+                gyroDrive(DRIVE_SPEED,45,-20);
+                //set marker down
+                rotateSlide(true,false);
+                //pause
+                sleep(750);
+                //Rotate back up
+                rotateSlide(false,false);
+                //back up
+                gyroDrive(0.4,-7,0);
+                //turn to pass other stuff
+                gyroTurn(TURN_SPEED,-90);
+                //drive forward
+                gyroDrive(DRIVE_SPEED,20,-90);
+                //rotate a lil
+                gyroTurn(TURN_SPEED,-135);
+                //Drive into crater
+                gyroDrive(1,75,-135);
+
+            }else if (mineralPlace.equalsIgnoreCase("Left")){
+                telemetry.addData("Case", "Left");
+                telemetry.update();
+
+                //drive the mineral to depot
+                gyroDrive(DRIVE_SPEED,17,0);
+                gyroTurn(TURN_SPEED,-90);
+                gyroDrive(DRIVE_SPEED,25,-90);
+                //Turn to face mineral
+                gyroTurn(TURN_SPEED,10);
+                //Drive mineral into depot
+                gyroDrive(DRIVE_SPEED,45,10);
+                //set marker down
+                rotateSlide(true,false);
+                //pause
+                sleep(1000);
+                //Rotate back up
+                rotateSlide(false,false);
+                //Drive backward into crater
+                gyroDrive(1,-90,45);
+            }else if (mineralPlace.equalsIgnoreCase("No place detected")){
+                telemetry.addData("Case", "Center");
+                telemetry.update();
+
+                //drive the mineral to depot
+                gyroTurn(TURN_SPEED,-10);
+                gyroDrive(DRIVE_SPEED,53,-7);
+                //set marker down
+                rotateSlide(true,false);
+                //pause
+                sleep(750);
+                //Rotate back up
+                rotateSlide(false,false);
+                //back up
+                gyroDrive(0.4,-7,0);
+                //turn to pass other stuff
+                gyroTurn(TURN_SPEED,-90);
+                //drive forward
+                gyroDrive(DRIVE_SPEED,15,-90);
+                //rotate a lil
+                gyroTurn(TURN_SPEED,-135);
+                //Drive into crater
+                gyroDrive(DRIVE_SPEED,60,-135);
             }
 
         }
@@ -310,7 +319,7 @@ public class RedDepot extends LinearOpMode {
                 //raise up
                 rotateMotor.setPower(-0.5);
                 //let it go down
-                sleep(550);
+                sleep(750);
                 rotateMotor.setPower(0);
             }else if (!down){
                 rotateMotor.setPower(0.5);
