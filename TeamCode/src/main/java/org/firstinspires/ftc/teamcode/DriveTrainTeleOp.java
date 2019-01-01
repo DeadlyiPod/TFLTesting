@@ -30,13 +30,19 @@ public class DriveTrainTeleOp extends LinearOpMode{
     private DcMotor rotateMotor = null;
 
     private CRServo intake = null;
-    private Servo block = null;
+    private DcMotor liftMotor = null;
+
+    private Servo outTake = null;
 
 
     //TeleOp Driving Settings
     double speedScale;
     double speedScaleSlow = 0.33;
     double speedScaleFast = 0.7;
+    int outTakeIndex = 0;
+    double outTakePos0 = 0.95;
+    double outTakePos1 = 0.65;
+    double outTakePos2 = 0.37;
 
 
     @Override
@@ -55,22 +61,22 @@ public class DriveTrainTeleOp extends LinearOpMode{
         slideMotor = hardwareMap.get(DcMotor.class, "slideMotor");
         rotateMotor = hardwareMap.get(DcMotor.class, "rotateMotor");
 
-        intake = hardwareMap.get(CRServo.class, "spinCR");
-        block = hardwareMap.get(Servo.class, "BlockServo");
+        intake = hardwareMap.get(CRServo.class, "Intake");
+        liftMotor = hardwareMap.get(DcMotor.class, "LiftMotor");
+
+        outTake = hardwareMap.get(Servo.class, "outTake");
 
         rotateMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         slideMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        liftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         //Set Motor Polarities
         leftInnerDrive.setDirection(DcMotor.Direction.REVERSE);
-        leftOuterDrive.setDirection(DcMotor.Direction.FORWARD);
+        leftOuterDrive.setDirection(DcMotor.Direction.REVERSE);
 
         rightInnerDrive.setDirection(DcMotor.Direction.FORWARD);
-        rightOuterDrive.setDirection(DcMotor.Direction.REVERSE);
+        rightOuterDrive.setDirection(DcMotor.Direction.FORWARD);
 
-        slideMotor.setDirection(DcMotor.Direction.REVERSE);
-
-        intake.setDirection(CRServo.Direction.REVERSE);
 
 
         leftInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -92,10 +98,14 @@ public class DriveTrainTeleOp extends LinearOpMode{
                 double rightInnerPower;
                 double rightOuterPower;
 
+                double liftMotorPower;
                 double slidePower;
                 double rotatePower;
 
                 double intakePower;
+
+
+
 
                 //Tank mode controls
 
@@ -120,18 +130,45 @@ public class DriveTrainTeleOp extends LinearOpMode{
                 rightInnerPower = Range.scale(rightInnerPower,-1.00,1.00, -speedScale, speedScale);
                 rightOuterPower = Range.scale(rightOuterPower,-1.00,1.00, -speedScale, speedScale);
 
-                intakePower = Range.clip(-gamepad2.left_trigger + gamepad2.right_trigger,-1,1);
+                //intakePower = Range.scale(-gamepad2.left_trigger + gamepad2.right_trigger,-1,1,-0.3,0.3);
 
-                slidePower = Range.scale(gamepad2.left_stick_y,-1.00,1.00, -0.5,0.5);
-                rotatePower = Range.scale(-gamepad2.right_stick_y,-1.00,1.00,-0.8,0.8);
-
-                intake.setPower(intakePower);
-
-                if (gamepad2.x){
-                    block.setPosition(0.35);
-                }else {
-                    block.setPosition(0.05);
+                if(gamepad2.left_trigger > 0){
+                    intake.setPower(1);
+                }else if(gamepad2.right_trigger > 0){
+                    intake.setPower(-1);
+                }else{
+                    intake.setPower(0);
                 }
+                slidePower = Range.scale(gamepad2.left_stick_y,-1.00,1.00, -0.85,0.70);
+                rotatePower = Range.scale(-gamepad2.right_stick_y,-1.00,1.00,-0.65,0.80);
+
+                if(gamepad2.right_bumper){
+                    liftMotorPower = 1;
+                }else if(gamepad2.left_bumper){
+                    liftMotorPower = -1;
+                }else{
+                    liftMotorPower = 0;
+                }
+
+
+                if(gamepad2.dpad_up && outTakeIndex == 0){
+                    outTake.setPosition(outTakePos1);
+                    outTakeIndex = 1;
+                    sleep(200);
+                }else if(gamepad2.dpad_up && outTakeIndex == 1){
+                    outTake.setPosition(outTakePos2);
+                    outTakeIndex = 2;
+                    sleep(200);
+                }else if(gamepad2.dpad_down && outTakeIndex == 2){
+                    outTake.setPosition(outTakePos1);
+                    outTakeIndex = 1;
+                    sleep(200);
+                }else if(gamepad2.dpad_down && outTakeIndex == 1){
+                    outTake.setPosition(outTakePos0);
+                    outTakeIndex = 0;
+                    sleep(200);
+                }
+
 
                 //Set Power
                 leftInnerDrive.setPower(leftInnerPower);
@@ -142,6 +179,8 @@ public class DriveTrainTeleOp extends LinearOpMode{
 
                 rotateMotor.setPower(rotatePower);
                 slideMotor.setPower(slidePower);
+                liftMotor.setPower(liftMotorPower);
+                //intake.setPower(intakePower);
 
 
                 //Runtime, and Power Variables being sent to motor
