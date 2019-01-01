@@ -11,6 +11,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.ClassFactory;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.Acceleration;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
@@ -34,6 +35,7 @@ public class RedDepot extends LinearOpMode {
 
     private double integratedYAxis = 0;
     private double lastRoll = 0;
+    double currentAngle = 0;
 
     //Initialize motors/servos
     private DcMotor leftInnerDrive = null;
@@ -66,8 +68,8 @@ public class RedDepot extends LinearOpMode {
 
     //Gyroscopic Drive Settings
     static final double     HEADING_THRESHOLD       = 1 ;      // As tight as we can make it with an integer gyro
-    static final double     P_TURN_COEFF            = 0.05;     // Larger is more responsive, but also less stable
-    static final double     P_DRIVE_COEFF           = 0.05;     // Larger is more responsive, but also less stable
+    static final double     P_TURN_COEFF            = 0.07;     // Larger is more responsive, but also less stable
+    static final double     P_DRIVE_COEFF           = 0.08;     // Larger is more responsive, but also less stable
 
     //Vuforia files?
     private static final String TFOD_MODEL_ASSET = "RoverRuckus.tflite";
@@ -101,7 +103,7 @@ public class RedDepot extends LinearOpMode {
         slideMotor = hardwareMap.get(DcMotor.class, "slideMotor");
         rotateMotor = hardwareMap.get(DcMotor.class, "rotateMotor");
 
-        intake = hardwareMap.get(CRServo.class, "spinCR");
+        intake = hardwareMap.get(CRServo.class, "Intake");
 
         rotateMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         slideMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -162,48 +164,74 @@ public class RedDepot extends LinearOpMode {
             telemetry.addData("Status", "Waiting in Init");     telemetry.update(); }
 
         if (opModeIsActive()) {
+            //Land first
             /** Activate Tensor Flow Object Detection. */
             if (tfod != null) {
                 tfod.activate();
             }
-            runtime.reset();
-            while (opModeIsActive() && runtime.seconds() < 4) {
-                if (tfod != null) {
-                    // getUpdatedRecognitions() will return null if no new information is available since
-                    // the last time that call was made.
+            rotateMotor.setPower(0.3);
+            gyroDrive(1,5,0);
+            gyroTurn(1,-45);
+            int goldMineralX = -1;
+            for(int i = 0; !(goldMineralX > 800 || goldMineralX < 500) && i <= 120 ; i++){
+                // Rotate a lil to the left each time (Moved to top because it will
+                // check the position of the gold mineral before moving.)
+                currentAngle = (double)i - 45;
+                telemetry.addData("Current angle: ", currentAngle);
+                gyroTurn(0.6,(double)i - 45);
+
+                if(tfod != null) {
                     List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
-                    if (updatedRecognitions != null) {
-                        telemetry.addData("# Object Detected", updatedRecognitions.size());
-                        if (updatedRecognitions.size() == 3) {
-                            int goldMineralX = -1;
-                            int silverMineral1X = -1;
-                            int silverMineral2X = -1;
-                            for (Recognition recognition : updatedRecognitions) {
-                                if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)) {
-                                    goldMineralX = (int) recognition.getLeft();
-                                } else if (silverMineral1X == -1) {
-                                    silverMineral1X = (int) recognition.getLeft();
-                                } else {
-                                    silverMineral2X = (int) recognition.getLeft();
-                                }
-                            }
-                            if (goldMineralX != -1 && silverMineral1X != -1 && silverMineral2X != -1) {
-                                if (goldMineralX < silverMineral1X && goldMineralX < silverMineral2X) {
-                                    telemetry.addData("Gold Mineral Position", "Left");
-                                    mineralPlace = "Left";
-                                } else if (goldMineralX > silverMineral1X && goldMineralX > silverMineral2X) {
-                                    telemetry.addData("Gold Mineral Position", "Right");
-                                    mineralPlace = "Right";
-                                } else {
-                                    telemetry.addData("Gold Mineral Position", "Center");
-                                    mineralPlace = "Center";
-                                }
+
+                    if(updatedRecognitions != null){
+                        for(Recognition recognition : updatedRecognitions){
+                            if(recognition.getLabel().equals(LABEL_GOLD_MINERAL)){
+                                goldMineralX = (int) recognition.getLeft();
+                                telemetry.addData("Gold Mineral X: ", goldMineralX);
+                                telemetry.update();
                             }
                         }
-                        telemetry.update();
                     }
                 }
             }
+            //Since we're facing the mineral we can collect the mineral by lowering the intake and rotating the intake and driving into it.
+            rotateSlide(true);
+            intake.setPower(-1);
+            encoderDrive(0.5,12,12,10);
+            //We assume we got it in and rotate the intake up.
+            rotateSlide(false);
+            //back up and complete path
+            encoderDrive(0.6,-6,-6,5);
+            //Drive past minerals based on where the robot is located
+            if(currentAngle >= 20){
+                //left side
+                //Drive Forward to get near wall
+                gyroDrive(1,20,45);
+                gyroTurn(1,135);
+                //Drive into depot
+            }else if(currentAngle <= -20){
+                //right side
+                //rotate to right to go past minerals
+                gyroTurn(1,90);
+                //Drive past others
+                gyroDrive(1,40,90);
+                gyroTurn(1,45);
+                gyroDrive(1,6,45);
+                gyroTurn(1,135);
+                //Drive into depot
+            }else{
+                //Assume center
+                //rotate to right to go past minerals
+                gyroTurn(1,90);
+                //Drive past others
+                gyroDrive(1,25,90);
+                gyroTurn(1,45);
+                gyroDrive(1,6,45);
+                gyroTurn(1,135);
+                //Drive into depot
+            }
+
+            /*
             if (mineralPlace.equalsIgnoreCase("Center")){
                 telemetry.addData("Case", "Center");
                 telemetry.update();
@@ -299,7 +327,7 @@ public class RedDepot extends LinearOpMode {
                 gyroTurn(TURN_SPEED,-135);
                 //Drive into crater
                 gyroDrive(DRIVE_SPEED,60,-135);
-            }
+            }*/
 
         }
         if (tfod != null) {
@@ -309,8 +337,7 @@ public class RedDepot extends LinearOpMode {
     }
 
     //Rotate Slider Method
-    private void rotateSlide(boolean down,
-                             boolean hover) {
+    private void rotateSlide(boolean down) {
 
 
 
@@ -323,8 +350,8 @@ public class RedDepot extends LinearOpMode {
                 rotateMotor.setPower(0);
             }else if (!down){
                 rotateMotor.setPower(0.5);
-                sleep(500);
-                rotateMotor.setPower(0);
+                sleep(750);
+                rotateMotor.setPower(0.3);
             }
             while (opModeIsActive() && rotateMotor.isBusy()) {
 
@@ -334,14 +361,7 @@ public class RedDepot extends LinearOpMode {
                 telemetry.update();
             }
 
-            //if hover is true then try and hold intake up a bit. Otherwise, set to 0 power.
-            if(hover){
-                rotateMotor.setPower(0.4);
-                sleep(200);
-                rotateMotor.setPower(0.2);
-            }else {
-                rotateMotor.setPower(0);
-            }
+
 
 
             //Go back to run using an encoder.
@@ -362,7 +382,7 @@ public class RedDepot extends LinearOpMode {
         VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters();
 
         parameters.vuforiaLicenseKey = VUFORIA_KEY;
-        parameters.cameraDirection = VuforiaLocalizer.CameraDirection.BACK;
+        parameters.cameraName = hardwareMap.get(WebcamName.class, "Webcam 1");
 
         //  Instantiate the Vuforia engine
         vuforia = ClassFactory.getInstance().createVuforia(parameters);
@@ -376,6 +396,7 @@ public class RedDepot extends LinearOpMode {
         int tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
                 "tfodMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         TFObjectDetector.Parameters tfodParameters = new TFObjectDetector.Parameters(tfodMonitorViewId);
+        tfodParameters.minimumConfidence = 0.65;
         tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
         tfod.loadModelFromAsset(TFOD_MODEL_ASSET, LABEL_GOLD_MINERAL, LABEL_SILVER_MINERAL);
     }
