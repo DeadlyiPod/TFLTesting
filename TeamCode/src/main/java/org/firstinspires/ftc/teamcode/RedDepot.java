@@ -76,7 +76,7 @@ public class RedDepot extends LinearOpMode {
     private static final String LABEL_GOLD_MINERAL = "Gold Mineral";
     private static final String LABEL_SILVER_MINERAL = "Silver Mineral";
     //Vuforia License
-    private static final String VUFORIA_KEY = "AV4rzZr/////AAAAGdd9iX6K6E4vot4iYXx7M+sE9XVwwTL30eOKvSPorcY1yK25A3ZI/ajH4Ktmg+2K1R4sUibLK6BBgw/jKf/juUgjbwB6Wi/magAhEnKorWebeAg8AzjlhbgBE5mhmtkX60bedZF/qX/6/leqVhEd0XZvGn/3xv56Z5NMrOsZzJRMqWNujm4R8Q1fhjBqwIkFuhGzJ2jFzWktAebZcGaImLwgaOjNlYLebS8lxpDuP7bnu/AwsRo/up1zuvUoncDabDS4SFeh/Vjy2fIFApnq7GieBaL2uv4gssG2JUgYvXz3uvQAswf5b5k8v6z0120obXqyH3949gLYeyoY/uZ5g9r93aoyxr2jEwg7+tRezzit";
+    private static final String VUFORIA_KEY = "Ae1Vij//////AAABmfqdtDgNtUaAitOrWDSvx255sec+JeO+Vv6LYA2lzXY71IcC9TTEMaGIluQoa3dE/EVeew84ds52ax+4Z1VPtIkLtAmeJLMP3jrGozxT/CwJ0mSZIYawEIbMzCs+0uggrQMdqrTzsThWWSoFpT22scuqHwsDe+hwmii9ARU4KJzeriU3kAqTT+ezKr26CiJ2RQpqc/oif3VwzOughRA06cT9XhuL3NGdt2t3ra6csD4cldy06+5Sujl1G9/XowVSU7kqXmUuqZdGTXQhkmVv1kCSw+OpuyxfQJKoZJ8OMTr/9uXQAVOrFzKuvRTaHpaSgeYWfn/AC3oeYl79YYpafRDI35j2Uq1c4ezJ4GVXdHzk";
 
     //Declare Vuforia
     private VuforiaLocalizer vuforia;
@@ -111,11 +111,13 @@ public class RedDepot extends LinearOpMode {
         leftOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         rightOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        leftOuterDrive.setDirection(DcMotor.Direction.FORWARD);
-        rightOuterDrive.setDirection(DcMotor.Direction.REVERSE);
+        leftOuterDrive.setDirection(DcMotor.Direction.REVERSE);
+        rightOuterDrive.setDirection(DcMotor.Direction.FORWARD);
+        leftInnerDrive.setDirection(DcMotor.Direction.REVERSE);
+        rightInnerDrive.setDirection(DcMotor.Direction.FORWARD);
 
         slideMotor.setDirection(DcMotor.Direction.REVERSE);
-        rotateMotor.setDirection(DcMotor.Direction.REVERSE);
+
 
         intake.setDirection(CRServo.Direction.REVERSE);
 
@@ -169,16 +171,35 @@ public class RedDepot extends LinearOpMode {
             if (tfod != null) {
                 tfod.activate();
             }
+            telemetry.addData("Change: ", "Rotate Motor set power 0.3");
+            telemetry.update();
+            sleep(3000);
             rotateMotor.setPower(0.3);
-            gyroDrive(1,5,0);
-            gyroTurn(1,-45);
+
+            telemetry.addData("Change: ", "5 Inches forward");
+            telemetry.update();
+            sleep(3000);
+            gyroDrive(0.5,5,0);
+
+            telemetry.addData("Change: ", "Turn to -45 degrees");
+            telemetry.update();
+            sleep(3000);
+            gyroTurn(0.3,-45);
+
+
+            telemetry.addData("Change: ", "Starting loop");
+            telemetry.update();
+            sleep(3000);
             int goldMineralX = -1;
-            for(int i = 0; !(goldMineralX > 800 || goldMineralX < 500) && i <= 120 ; i++){
+            for(int i = 0; (goldMineralX > 450 || goldMineralX < 270) && i <= 120 ; i++){
                 // Rotate a lil to the left each time (Moved to top because it will
                 // check the position of the gold mineral before moving.)
-                currentAngle = (double)i - 45;
+                currentAngle = 2 * ((double)i - 45);
                 telemetry.addData("Current angle: ", currentAngle);
-                gyroTurn(0.6,(double)i - 45);
+                telemetry.addData("Current GoldX: ", goldMineralX);
+                telemetry.update();
+
+
 
                 if(tfod != null) {
                     List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
@@ -187,47 +208,52 @@ public class RedDepot extends LinearOpMode {
                         for(Recognition recognition : updatedRecognitions){
                             if(recognition.getLabel().equals(LABEL_GOLD_MINERAL)){
                                 goldMineralX = (int) recognition.getLeft();
-                                telemetry.addData("Gold Mineral X: ", goldMineralX);
-                                telemetry.update();
                             }
                         }
+                        gyroTurn(0.75,currentAngle);
                     }
                 }
             }
             //Since we're facing the mineral we can collect the mineral by lowering the intake and rotating the intake and driving into it.
             rotateSlide(true);
             intake.setPower(-1);
-            encoderDrive(0.5,12,12,10);
+            encoderDrive(0.5,24,24,10);
             //We assume we got it in and rotate the intake up.
             rotateSlide(false);
             //back up and complete path
             encoderDrive(0.6,-6,-6,5);
             //Drive past minerals based on where the robot is located
             if(currentAngle >= 20){
+                telemetry.addData("Guess: ", "Left Side");
+                telemetry.update();
                 //left side
                 //Drive Forward to get near wall
-                gyroDrive(1,20,45);
-                gyroTurn(1,135);
+                gyroDrive(DRIVE_SPEED,20,45);
+                gyroTurn(TURN_SPEED,135);
                 //Drive into depot
             }else if(currentAngle <= -20){
+                telemetry.addData("Guess: ", "Right Side");
+                telemetry.update();
                 //right side
                 //rotate to right to go past minerals
-                gyroTurn(1,90);
+                gyroTurn(TURN_SPEED,90);
                 //Drive past others
-                gyroDrive(1,40,90);
-                gyroTurn(1,45);
-                gyroDrive(1,6,45);
-                gyroTurn(1,135);
+                gyroDrive(DRIVE_SPEED,40,90);
+                gyroTurn(TURN_SPEED,45);
+                gyroDrive(DRIVE_SPEED,6,45);
+                gyroTurn(TURN_SPEED,135);
                 //Drive into depot
             }else{
+                telemetry.addData("Guess: ", "Center");
+                telemetry.update();
                 //Assume center
                 //rotate to right to go past minerals
-                gyroTurn(1,90);
+                gyroTurn(TURN_SPEED,90);
                 //Drive past others
-                gyroDrive(1,25,90);
-                gyroTurn(1,45);
-                gyroDrive(1,6,45);
-                gyroTurn(1,135);
+                gyroDrive(DRIVE_SPEED,25,90);
+                gyroTurn(TURN_SPEED,45);
+                gyroDrive(DRIVE_SPEED,6,45);
+                gyroTurn(TURN_SPEED,135);
                 //Drive into depot
             }
 
@@ -344,13 +370,13 @@ public class RedDepot extends LinearOpMode {
         if(opModeIsActive()){
             if(down) {
                 //raise up
-                rotateMotor.setPower(-0.5);
+                rotateMotor.setPower(-0.3);
                 //let it go down
-                sleep(750);
+                sleep(500);
                 rotateMotor.setPower(0);
             }else if (!down){
-                rotateMotor.setPower(0.5);
-                sleep(750);
+                rotateMotor.setPower(0.6);
+                sleep(800);
                 rotateMotor.setPower(0.3);
             }
             while (opModeIsActive() && rotateMotor.isBusy()) {
@@ -396,7 +422,7 @@ public class RedDepot extends LinearOpMode {
         int tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
                 "tfodMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         TFObjectDetector.Parameters tfodParameters = new TFObjectDetector.Parameters(tfodMonitorViewId);
-        tfodParameters.minimumConfidence = 0.65;
+        tfodParameters.minimumConfidence = 0.4;
         tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
         tfod.loadModelFromAsset(TFOD_MODEL_ASSET, LABEL_GOLD_MINERAL, LABEL_SILVER_MINERAL);
     }
@@ -420,15 +446,13 @@ public class RedDepot extends LinearOpMode {
             // Turn On RUN_TO_POSITION
             leftInnerDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
             rightInnerDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            leftOuterDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightOuterDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
 
             // reset the timeout time and start motion.
             runtime.reset();
             leftInnerDrive.setPower(Math.abs(speed));
             rightInnerDrive.setPower(Math.abs(speed));
-            leftOuterDrive.setPower(Math.abs(speed));
-            rightOuterDrive.setPower(Math.abs(speed));
+
 
             // keep looping while we are still active, and there is time left, and both motors are running.
             // Note: We use (isBusy() && isBusy()) in the loop test, which means that when EITHER motor hits
@@ -451,14 +475,11 @@ public class RedDepot extends LinearOpMode {
             // Stop all motion;
             leftInnerDrive.setPower(0);
             rightInnerDrive.setPower(0);
-            leftOuterDrive.setPower(0);
-            rightOuterDrive.setPower(0);
 
             // Turn off RUN_TO_POSITION
             leftInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             rightInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            leftOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            rightOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
 
             //  sleep(250);   // optional pause after each move
         }

@@ -70,7 +70,7 @@ public class ConceptTensorFlowObjectDetection extends LinearOpMode {
      * Once you've obtained a license key, copy the string from the Vuforia web site
      * and paste it in to your code on the next line, between the double quotes.
      */
-    private static final String VUFORIA_KEY = "AV4rzZr/////AAAAGdd9iX6K6E4vot4iYXx7M+sE9XVwwTL30eOKvSPorcY1yK25A3ZI/ajH4Ktmg+2K1R4sUibLK6BBgw/jKf/juUgjbwB6Wi/magAhEnKorWebeAg8AzjlhbgBE5mhmtkX60bedZF/qX/6/leqVhEd0XZvGn/3xv56Z5NMrOsZzJRMqWNujm4R8Q1fhjBqwIkFuhGzJ2jFzWktAebZcGaImLwgaOjNlYLebS8lxpDuP7bnu/AwsRo/up1zuvUoncDabDS4SFeh/Vjy2fIFApnq7GieBaL2uv4gssG2JUgYvXz3uvQAswf5b5k8v6z0120obXqyH3949gLYeyoY/uZ5g9r93aoyxr2jEwg7+tRezzit";
+    private static final String VUFORIA_KEY = "Ae1Vij//////AAABmfqdtDgNtUaAitOrWDSvx255sec+JeO+Vv6LYA2lzXY71IcC9TTEMaGIluQoa3dE/EVeew84ds52ax+4Z1VPtIkLtAmeJLMP3jrGozxT/CwJ0mSZIYawEIbMzCs+0uggrQMdqrTzsThWWSoFpT22scuqHwsDe+hwmii9ARU4KJzeriU3kAqTT+ezKr26CiJ2RQpqc/oif3VwzOughRA06cT9XhuL3NGdt2t3ra6csD4cldy06+5Sujl1G9/XowVSU7kqXmUuqZdGTXQhkmVv1kCSw+OpuyxfQJKoZJ8OMTr/9uXQAVOrFzKuvRTaHpaSgeYWfn/AC3oeYl79YYpafRDI35j2Uq1c4ezJ4GVXdHzk";
 
     /**
      * {@link #vuforia} is the variable we will use to store our instance of the Vuforia
@@ -109,7 +109,7 @@ public class ConceptTensorFlowObjectDetection extends LinearOpMode {
             }
             //Rotate to right
             int goldMineralX = -1;
-            while(!(goldMineralX > 800 || goldMineralX < 500)){
+            while(opModeIsActive()){
                 // Rotate a lil to the left each time (Moved to top because it will
                 // check the position of the gold mineral before moving.
                 if(tfod != null) {
