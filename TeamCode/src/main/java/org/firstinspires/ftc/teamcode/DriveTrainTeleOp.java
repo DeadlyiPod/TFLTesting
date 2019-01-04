@@ -28,10 +28,10 @@ public class DriveTrainTeleOp extends LinearOpMode{
 
     private DcMotor slideMotor = null;
     private DcMotor rotateMotor = null;
-
-    private CRServo intake = null;
+    private DcMotor hangMotor = null;
     private DcMotor liftMotor = null;
 
+    private CRServo intake = null;
     private Servo outTake = null;
 
 
@@ -60,10 +60,11 @@ public class DriveTrainTeleOp extends LinearOpMode{
 
         slideMotor = hardwareMap.get(DcMotor.class, "slideMotor");
         rotateMotor = hardwareMap.get(DcMotor.class, "rotateMotor");
-
-        intake = hardwareMap.get(CRServo.class, "Intake");
+        hangMotor = hardwareMap.get(DcMotor.class, "hangMotor");
         liftMotor = hardwareMap.get(DcMotor.class, "LiftMotor");
 
+
+        intake = hardwareMap.get(CRServo.class, "Intake");
         outTake = hardwareMap.get(Servo.class, "outTake");
 
         rotateMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -101,7 +102,7 @@ public class DriveTrainTeleOp extends LinearOpMode{
                 double liftMotorPower;
                 double slidePower;
                 double rotatePower;
-
+                double hangMotorPower;
                 double intakePower;
 
 
@@ -129,6 +130,9 @@ public class DriveTrainTeleOp extends LinearOpMode{
 
                 rightInnerPower = Range.scale(rightInnerPower,-1.00,1.00, -speedScale, speedScale);
                 rightOuterPower = Range.scale(rightOuterPower,-1.00,1.00, -speedScale, speedScale);
+
+                hangMotorPower = Range.scale(-gamepad2.left_stick_y + -gamepad2.left_trigger + gamepad2.right_trigger,-1,1,-1,1);
+
 
                 //intakePower = Range.scale(-gamepad2.left_trigger + gamepad2.right_trigger,-1,1,-0.3,0.3);
 
@@ -180,6 +184,7 @@ public class DriveTrainTeleOp extends LinearOpMode{
                 rotateMotor.setPower(rotatePower);
                 slideMotor.setPower(slidePower);
                 liftMotor.setPower(liftMotorPower);
+                hangMotor.setPower(hangMotorPower);
                 //intake.setPower(intakePower);
 
 

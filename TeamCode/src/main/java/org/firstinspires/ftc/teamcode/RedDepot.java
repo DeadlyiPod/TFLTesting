@@ -117,6 +117,8 @@ public class RedDepot extends LinearOpMode {
 
         leftOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         rightOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        leftInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rightInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         leftOuterDrive.setDirection(DcMotor.Direction.REVERSE);
         rightOuterDrive.setDirection(DcMotor.Direction.FORWARD);
@@ -180,33 +182,32 @@ public class RedDepot extends LinearOpMode {
             }
             telemetry.addData("Change: ", "Rotate Motor set power 0.3");
             telemetry.update();
-            sleep(3000);
             rotateMotor.setPower(0.3);
 
             telemetry.addData("Change: ", "5 Inches forward");
             telemetry.update();
-            sleep(3000);
             gyroDrive(0.5,5,0);
 
             telemetry.addData("Change: ", "Turn to -45 degrees");
             telemetry.update();
-            sleep(3000);
             gyroTurn(0.3,-45);
 
 
             telemetry.addData("Change: ", "Starting loop");
             telemetry.update();
-            sleep(3000);
+            sleep(5000);
             int goldMineralX = -1;
             //Turn on motors to rotate.
-            leftInnerDrive.setPower(-0.3);
-            leftOuterDrive.setPower(-0.3);
-            rightInnerDrive.setPower(0.3);
-            rightOuterDrive.setPower(0.3);
-            for(int i = 0; (goldMineralX > 450 || goldMineralX < 270) && i <= 75 ; i++){
+            leftInnerDrive.setPower(-0.1);
+            leftOuterDrive.setPower(-0.1);
+            rightInnerDrive.setPower(0.1);
+            rightOuterDrive.setPower(0.1);
+
+
+            while(goldMineralX > 450 || goldMineralX < 270){
                 // Rotate a lil to the left each time (Moved to top because it will
                 // check the position of the gold mineral before moving.)
-                currentAngle = angles.firstAngle;
+
                 telemetry.addData("Current angle: ", currentAngle);
                 telemetry.addData("Current GoldX: ", goldMineralX);
                 telemetry.update();
@@ -231,14 +232,16 @@ public class RedDepot extends LinearOpMode {
             leftOuterDrive.setPower(0);
             rightInnerDrive.setPower(0);
             rightOuterDrive.setPower(0);
+            sleep(500);
+            currentAngle = angles.firstAngle;
             //Since we're facing the mineral we can collect the mineral by lowering the intake and rotating the intake and driving into it.
             rotateSlide(true);
             intake.setPower(-1);
-            gyroDrive(DRIVE_SPEED,24,currentAngle);
+            encoderDrive(DRIVE_SPEED,24,24,10);
             //We assume we got it in and rotate the intake up.
             rotateSlide(false);
             //back up and complete path
-            gyroDrive(0.6,-14,currentAngle);
+            encoderDrive(DRIVE_SPEED,-12,-12,10);
             //Drive past minerals based on where the robot is located
             if(currentAngle >= 20){
                 telemetry.addData("Guess: ", "Left Side");
@@ -437,6 +440,26 @@ public class RedDepot extends LinearOpMode {
             intake.setPower(speed);
         }
     }
+    private void timeDrive(double drivePower, long seconds, boolean forward){
+        if(forward){
+            leftOuterDrive.setPower(drivePower);
+            leftInnerDrive.setPower(drivePower);
+            rightOuterDrive.setPower(drivePower);
+            rightInnerDrive.setPower(drivePower);
+            sleep(seconds * 1000);
+        }else if(!forward){
+            leftOuterDrive.setPower(-drivePower);
+            leftInnerDrive.setPower(-drivePower);
+            rightOuterDrive.setPower(-drivePower);
+            rightInnerDrive.setPower(-drivePower);
+            sleep(seconds * 1000);
+        }
+
+        leftOuterDrive.setPower(0);
+        leftInnerDrive.setPower(0);
+        rightOuterDrive.setPower(0);
+        rightInnerDrive.setPower(0);
+    }
     //Init Vuforia method
     private void initVuforia() {
         /*
@@ -480,6 +503,7 @@ public class RedDepot extends LinearOpMode {
             leftInnerDrive.setTargetPosition(newLeftTarget);
             rightInnerDrive.setTargetPosition(newRightTarget);
 
+
             // Turn On RUN_TO_POSITION
             leftInnerDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
             rightInnerDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
@@ -499,7 +523,7 @@ public class RedDepot extends LinearOpMode {
             // onto the next step, use (isBusy() || isBusy()) in the loop test.
             while (opModeIsActive() &&
                     (runtime.seconds() < timeoutS) &&
-                    (leftInnerDrive.isBusy() && rightInnerDrive.isBusy() && rightOuterDrive.isBusy() && leftOuterDrive.isBusy())) {
+                    (leftInnerDrive.isBusy() && rightInnerDrive.isBusy())) {
 
                 // Display it for the driver.
                 telemetry.addData("Path1",  "Running to %7d :%7d", newLeftTarget,  newRightTarget);
