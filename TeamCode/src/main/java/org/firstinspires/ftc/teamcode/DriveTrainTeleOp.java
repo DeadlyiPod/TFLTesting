@@ -5,7 +5,9 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.PwmControl;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.ServoControllerEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
@@ -37,12 +39,12 @@ public class DriveTrainTeleOp extends LinearOpMode{
 
     //TeleOp Driving Settings
     double speedScale;
-    double speedScaleSlow = 0.33;
-    double speedScaleFast = 0.7;
+    double speedScaleSlow = 0.6;
+    double speedScaleFast = 1;
     int outTakeIndex = 0;
-    double outTakePos0 = 0.95;
-    double outTakePos1 = 0.65;
-    double outTakePos2 = 0.37;
+    double outTakePos0 = 1;
+    double outTakePos1 = 0.75;
+    double outTakePos2 = 0.5;
 
 
     @Override
@@ -78,10 +80,15 @@ public class DriveTrainTeleOp extends LinearOpMode{
         rightInnerDrive.setDirection(DcMotor.Direction.FORWARD);
         rightOuterDrive.setDirection(DcMotor.Direction.FORWARD);
 
+        if(outTake.getController() instanceof ServoControllerEx){
+            ServoControllerEx theControl = (ServoControllerEx) outTake.getController();
+
+            int thePort = outTake.getPortNumber();
+            PwmControl.PwmRange theRange = new PwmControl.PwmRange(500,2500);
+            theControl.setServoPwmRange(thePort,theRange);
+        }
 
 
-        leftInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        rightInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         //wait for driver to press PLAY
         while (!opModeIsActive()&&!isStopRequested()) {
@@ -190,9 +197,7 @@ public class DriveTrainTeleOp extends LinearOpMode{
 
                 //Runtime, and Power Variables being sent to motor
                 telemetry.addData("Status", "Run Time: " + runtime.toString());
-                telemetry.addData("InnerMotorEncPos","%7d + %7d",leftInnerDrive.getCurrentPosition(),leftOuterDrive.getCurrentPosition());
-                telemetry.addData("Motors", "Rotate Power (%.2f), leftOuter (%.2f), rightInner (%.2f), rightOuter (%.2f)", rotatePower,leftOuterPower,rightInnerPower,rightOuterPower);
-                telemetry.addData("Rotate Position", rotateMotor.getCurrentPosition());
+                telemetry.addData("Drivetrain Encoder Values", "\n%s%d\n%s%d\n%s%d\n%s%d", "Left Inner Drive: ", leftInnerDrive.getCurrentPosition(), "Right Inner Drive: ", rightInnerDrive.getCurrentPosition(), "Left Outer Drive: ", leftOuterDrive.getCurrentPosition(), "Right Outer Drive:", rightOuterDrive.getCurrentPosition());
                 telemetry.update();
             } //Driving END
 
