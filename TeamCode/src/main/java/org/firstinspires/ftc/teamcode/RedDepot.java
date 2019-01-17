@@ -195,7 +195,6 @@ public class RedDepot extends LinearOpMode {
 
             telemetry.addData("Change: ", "Starting loop");
             telemetry.update();
-            sleep(5000);
             int goldMineralX = -1;
             //Turn on motors to rotate.
             //leftInnerDrive.setPower(-0.01);
@@ -239,11 +238,12 @@ public class RedDepot extends LinearOpMode {
             //Since we're facing the mineral we can collect the mineral by lowering the intake and rotating the intake and driving into it.
             rotateSlide(true);
             intake.setPower(-1);
-            encoderDrive(DRIVE_SPEED,24,24,10);
+            encoderDrive(DRIVE_SPEED,24,28,10);
             //We assume we got it in and rotate the intake up.
             rotateSlide(false);
             //back up and complete path
-            encoderDrive(DRIVE_SPEED,-12,-12,10);
+            encoderDrive(DRIVE_SPEED,-12,-16,10);
+            intake.setPower(0);
             //Drive past minerals based on where the robot is located
             if(currentAngle >= 20){
                 telemetry.addData("Guess: ", "Left Side");
@@ -274,7 +274,7 @@ public class RedDepot extends LinearOpMode {
                 //Drive past others
                 gyroDrive(DRIVE_SPEED,30,90);
                 gyroTurn(TURN_SPEED,45);
-                gyroDrive(DRIVE_SPEED,20,45);
+                gyroDrive(DRIVE_SPEED,5,45);
                 gyroTurn(TURN_SPEED,135);
                 //Drive into depot
             }
@@ -285,10 +285,10 @@ public class RedDepot extends LinearOpMode {
             rotateSlide(true);
             //drop Marker
             outtake.setPosition(outTakePos2);
-            sleep(500);
+            sleep(800);
             //reset outtake servo
             outtake.setPosition(outTakePos0);
-            sleep(250);
+            sleep(500);
             //pick up intake
             rotateSlide(false);
 
@@ -500,21 +500,21 @@ public class RedDepot extends LinearOpMode {
         if (opModeIsActive()) {
 
             // Determine new target position, and pass to motor controller
-            newLeftTarget = (leftInnerDrive.getCurrentPosition() + (int) (leftInches * COUNTS_PER_INCH));
-            newRightTarget = rightInnerDrive.getCurrentPosition() + (int)(rightInches * COUNTS_PER_INCH);
-            leftInnerDrive.setTargetPosition(newLeftTarget);
-            rightInnerDrive.setTargetPosition(newRightTarget);
+            newLeftTarget = (leftOuterDrive.getCurrentPosition() + (int) (leftInches * COUNTS_PER_INCH));
+            newRightTarget = rightOuterDrive.getCurrentPosition() + (int)(rightInches * COUNTS_PER_INCH);
+            leftOuterDrive.setTargetPosition(newLeftTarget);
+            rightOuterDrive.setTargetPosition(newRightTarget);
 
 
             // Turn On RUN_TO_POSITION
-            leftInnerDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            rightInnerDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            leftOuterDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            rightOuterDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 
 
             // reset the timeout time and start motion.
             runtime.reset();
-            leftInnerDrive.setPower(Math.abs(speed));
-            rightInnerDrive.setPower(Math.abs(speed));
+            leftOuterDrive.setPower(Math.abs(speed));
+            rightOuterDrive.setPower(Math.abs(speed));
 
 
             // keep looping while we are still active, and there is time left, and both motors are running.
@@ -525,23 +525,23 @@ public class RedDepot extends LinearOpMode {
             // onto the next step, use (isBusy() || isBusy()) in the loop test.
             while (opModeIsActive() &&
                     (runtime.seconds() < timeoutS) &&
-                    (leftInnerDrive.isBusy() && rightInnerDrive.isBusy())) {
+                    (leftOuterDrive.isBusy() && rightOuterDrive.isBusy())) {
 
                 // Display it for the driver.
                 telemetry.addData("Path1",  "Running to %7d :%7d", newLeftTarget,  newRightTarget);
                 telemetry.addData("Path2",  "Running at %7d :%7d",
-                        leftInnerDrive.getCurrentPosition(),
-                        rightInnerDrive.getCurrentPosition());
+                        leftOuterDrive.getCurrentPosition(),
+                        rightOuterDrive.getCurrentPosition());
                 telemetry.update();
             }
 
             // Stop all motion;
-            leftInnerDrive.setPower(0);
-            rightInnerDrive.setPower(0);
+            leftOuterDrive.setPower(0);
+            rightOuterDrive.setPower(0);
 
             // Turn off RUN_TO_POSITION
-            leftInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            rightInnerDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            leftOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            rightOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
 
             //  sleep(250);   // optional pause after each move
