@@ -183,7 +183,7 @@ public class Crater extends LinearOpMode {
             telemetry.update();
             rotateMotor.setPower(0.3);
 
-            telemetry.addData("Change: ", "5 Inches forward");
+            telemetry.addData("Change: ", "10 Inches forward");
             telemetry.update();
             gyroDrive(0.5,10,0);
 
@@ -198,7 +198,6 @@ public class Crater extends LinearOpMode {
             int goldMineralY = -1;
             boolean isFound = false;
             leftOuterDrive.setPower(-0.15);
-
             rightOuterDrive.setPower(0.15);
 
 
@@ -234,10 +233,11 @@ public class Crater extends LinearOpMode {
                                 telemetry.addData("Gold Mineral Found: ", isFound);
                             }
                             telemetry.update();
-                            if(recognition.getTop() < 120 ) {
+                            if(recognition.getTop() > 120 ) {
                                 if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)) {
                                     goldMineralX = (int) recognition.getLeft();
                                     goldMineralY = (int) recognition.getTop();
+                                    isFound = true;
 
                                 }
                             }
@@ -255,7 +255,7 @@ public class Crater extends LinearOpMode {
             currentAngle = angles.firstAngle;
             //Since we're facing the mineral we can collect the mineral by lowering the intake and rotating the intake and driving into it.
             rotateSlide(true);
-            encoderDrive(DRIVE_SPEED,16,15,10);
+            encoderDrive(DRIVE_SPEED,15,14,10);
             //We assume we got it in and rotate the intake up.
             rotateSlide(false);
             //back up and complete path

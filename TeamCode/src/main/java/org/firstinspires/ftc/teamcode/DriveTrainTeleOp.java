@@ -43,8 +43,8 @@ public class DriveTrainTeleOp extends LinearOpMode{
     double speedScaleFast = 1;
     int outTakeIndex = 0;
     double outTakePos0 = 1;
-    double outTakePos1 = 0.75;
-    double outTakePos2 = 0.5;
+    double outTakePos1 = 0.85;
+    double outTakePos2 = 0.67;
 
 
     @Override
