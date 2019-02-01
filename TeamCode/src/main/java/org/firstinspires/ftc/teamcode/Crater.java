@@ -47,6 +47,8 @@ public class Crater extends LinearOpMode {
     private DcMotor slideMotor = null;
     private DcMotor rotateMotor = null;
 
+    private DcMotor hangMotor = null;
+
     private CRServo intake = null;
     private Servo outtake = null;
 
@@ -107,6 +109,8 @@ public class Crater extends LinearOpMode {
 
         slideMotor = hardwareMap.get(DcMotor.class, "slideMotor");
         rotateMotor = hardwareMap.get(DcMotor.class, "rotateMotor");
+
+        hangMotor = hardwareMap.get(DcMotor.class, "hangMotor");
 
         intake = hardwareMap.get(CRServo.class, "Intake");
         outtake = hardwareMap.get(Servo.class, "outTake");
@@ -463,6 +467,8 @@ public class Crater extends LinearOpMode {
             //  sleep(250);   // optional pause after each move
         }
     }
+
+
 
     public void gyroDrive ( double speed,
                             double distance,

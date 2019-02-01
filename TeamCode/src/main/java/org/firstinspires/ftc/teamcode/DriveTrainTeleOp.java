@@ -35,7 +35,7 @@ public class DriveTrainTeleOp extends LinearOpMode{
 
     private CRServo intake = null;
     private Servo outTake = null;
-
+    private Servo depotDrop = null;
 
     //TeleOp Driving Settings
     double speedScale;
@@ -68,6 +68,7 @@ public class DriveTrainTeleOp extends LinearOpMode{
 
         intake = hardwareMap.get(CRServo.class, "Intake");
         outTake = hardwareMap.get(Servo.class, "outTake");
+        depotDrop = hardwareMap.get(Servo.class, "depotDrop");
 
         rotateMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         slideMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -88,7 +89,8 @@ public class DriveTrainTeleOp extends LinearOpMode{
             theControl.setServoPwmRange(thePort,theRange);
         }
 
-
+        hangMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        hangMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         //wait for driver to press PLAY
         while (!opModeIsActive()&&!isStopRequested()) {
@@ -113,8 +115,6 @@ public class DriveTrainTeleOp extends LinearOpMode{
                 double intakePower;
 
 
-
-
                 //Tank mode controls
 
                 //Take sum of values of joysticks and triggers, then clip them to 1.00
@@ -126,55 +126,66 @@ public class DriveTrainTeleOp extends LinearOpMode{
 
 
                 //Scale power value for more controllable driving
-                if(gamepad1.left_bumper){
+                if (gamepad1.left_bumper) {
                     speedScale = speedScaleFast;
                 } else {
                     speedScale = speedScaleSlow;
                 }
 
-                leftInnerPower = Range.scale(leftInnerPower,-1.00,1.00, -speedScale, speedScale);
-                leftOuterPower = Range.scale(leftOuterPower,-1.00,1.00, -speedScale, speedScale);
+                leftInnerPower = Range.scale(leftInnerPower, -1.00, 1.00, -speedScale, speedScale);
+                leftOuterPower = Range.scale(leftOuterPower, -1.00, 1.00, -speedScale, speedScale);
 
-                rightInnerPower = Range.scale(rightInnerPower,-1.00,1.00, -speedScale, speedScale);
-                rightOuterPower = Range.scale(rightOuterPower,-1.00,1.00, -speedScale, speedScale);
-
-                hangMotorPower = Range.scale(-gamepad2.left_stick_y + -gamepad2.left_trigger + gamepad2.right_trigger,-1,1,-1,1);
+                rightInnerPower = Range.scale(rightInnerPower, -1.00, 1.00, -speedScale, speedScale);
+                rightOuterPower = Range.scale(rightOuterPower, -1.00, 1.00, -speedScale, speedScale);
+                if (gamepad2.y && hangMotor.getCurrentPosition() < 18000) {
+                    hangMotorPower = 1;
+                }else if (gamepad2.a && hangMotor.getCurrentPosition() > -20) {
+                    hangMotorPower = -1;
+                } else {
+                    hangMotorPower = 0;
+                }
 
 
                 //intakePower = Range.scale(-gamepad2.left_trigger + gamepad2.right_trigger,-1,1,-0.3,0.3);
 
-                if(gamepad2.left_trigger > 0){
+                if (gamepad2.left_trigger > 0) {
                     intake.setPower(1);
-                }else if(gamepad2.right_trigger > 0){
+                } else if (gamepad2.right_trigger > 0) {
                     intake.setPower(-1);
-                }else{
+                } else {
                     intake.setPower(0);
                 }
-                slidePower = Range.scale(gamepad2.left_stick_y,-1.00,1.00, -0.85,0.70);
-                rotatePower = Range.scale(-gamepad2.right_stick_y,-1.00,1.00,-0.65,0.80);
+                slidePower = Range.scale(gamepad2.left_stick_y, -1.00, 1.00, -0.85, 0.70);
+                rotatePower = Range.scale(-gamepad2.right_stick_y, -1.00, 1.00, -0.65, 0.80);
 
-                if(gamepad2.right_bumper){
+                if (gamepad2.right_bumper) {
                     liftMotorPower = 1;
-                }else if(gamepad2.left_bumper){
+                } else if (gamepad2.left_bumper) {
                     liftMotorPower = -1;
-                }else{
+                } else {
                     liftMotorPower = 0;
                 }
 
+                if (gamepad2.b) {
+                    depotDrop.setPosition(0);
+                }
+                if (gamepad2.x) {
+                    depotDrop.setPosition(1);
+                }
 
-                if(gamepad2.dpad_up && outTakeIndex == 0){
+                if (gamepad2.dpad_up && outTakeIndex == 0) {
                     outTake.setPosition(outTakePos1);
                     outTakeIndex = 1;
                     sleep(200);
-                }else if(gamepad2.dpad_up && outTakeIndex == 1){
+                } else if (gamepad2.dpad_up && outTakeIndex == 1) {
                     outTake.setPosition(outTakePos2);
                     outTakeIndex = 2;
                     sleep(200);
-                }else if(gamepad2.dpad_down && outTakeIndex == 2){
+                } else if (gamepad2.dpad_down && outTakeIndex == 2) {
                     outTake.setPosition(outTakePos1);
                     outTakeIndex = 1;
                     sleep(200);
-                }else if(gamepad2.dpad_down && outTakeIndex == 1){
+                } else if (gamepad2.dpad_down && outTakeIndex == 1) {
                     outTake.setPosition(outTakePos0);
                     outTakeIndex = 0;
                     sleep(200);
@@ -192,17 +203,16 @@ public class DriveTrainTeleOp extends LinearOpMode{
                 slideMotor.setPower(slidePower);
                 liftMotor.setPower(liftMotorPower);
                 hangMotor.setPower(hangMotorPower);
-                //intake.setPower(intakePower);
 
 
                 //Runtime, and Power Variables being sent to motor
                 telemetry.addData("Status", "Run Time: " + runtime.toString());
                 telemetry.addData("Drivetrain Encoder Values", "\n%s%d\n%s%d\n%s%d\n%s%d", "Left Inner Drive: ", leftInnerDrive.getCurrentPosition(), "Right Inner Drive: ", rightInnerDrive.getCurrentPosition(), "Left Outer Drive: ", leftOuterDrive.getCurrentPosition(), "Right Outer Drive:", rightOuterDrive.getCurrentPosition());
+                telemetry.addData("Hanging Motor Encoder: ", hangMotor.getCurrentPosition());
                 telemetry.update();
             } //Driving END
 
         }
-
     }
 
 }
