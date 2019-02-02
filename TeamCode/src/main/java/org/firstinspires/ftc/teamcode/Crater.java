@@ -51,6 +51,7 @@ public class Crater extends LinearOpMode {
 
     private CRServo intake = null;
     private Servo outtake = null;
+    private Servo depotDrop = null;
 
     double outTakePos0 = 0.95;
     double outTakePos1 = 0.65;
@@ -71,12 +72,11 @@ public class Crater extends LinearOpMode {
 
     // These constants define the desired driving/control characteristics
     static final double     DRIVE_SPEED             = 0.7;     // Nominal speed for better accuracy.
-    static final double     TURN_SPEED              = 0.4;     // Nominal half speed for better accuracy.
 
     //Gyroscopic Drive Settings
-    static final double     HEADING_THRESHOLD       = 1 ;      // As tight as we can make it with an integer gyro
-    static final double     P_TURN_COEFF            = 0.07;     // Larger is more responsive, but also less stable
-    static final double     P_DRIVE_COEFF           = 0.08;     // Larger is more responsive, but also less stable
+    static final double     HEADING_THRESHOLD       = 2 ;      // As tight as we can make it with an integer gyro
+    static final double     P_TURN_COEFF            = 0.03;     // Larger is more responsive, but also less stable
+    static final double     P_DRIVE_COEFF           = 0.05;     // Larger is more responsive, but also less stable
 
     //Vuforia files?
     private static final String TFOD_MODEL_ASSET = "RoverRuckus.tflite";
@@ -90,6 +90,23 @@ public class Crater extends LinearOpMode {
 
     //Declare Tensorflow Lite
     private TFObjectDetector tfod;
+
+
+
+    //LEAD SCREW VARS
+    //Lead Screw Lift Targets
+    int liftTargetUp = 18000;
+    int liftTargetDown = 0;
+
+    /* Declare OpMode members. */
+    private DcMotor liftMotor = null;
+
+    static final double     LIFT_COUNTS_PER_MOTOR_REV    = 560;    // eg: TETRIX Motor Encoder
+    static final double     GEAR_REDUCTION          = 1.25 ;     // This is < 1.0 if geared UP
+    static final double     LEAD_ROD_THREAD_MM      = 8.0 ;     // For figuring circumference
+    static final double     COUNTS_PER_MILLIMETER   = ((LIFT_COUNTS_PER_MOTOR_REV * GEAR_REDUCTION)/LEAD_ROD_THREAD_MM);
+    static final double     LIFT_SPEED              = 0.6;
+    static final double     TURN_SPEED              = 0.5;
 
 
     private ElapsedTime runtime;
@@ -111,9 +128,11 @@ public class Crater extends LinearOpMode {
         rotateMotor = hardwareMap.get(DcMotor.class, "rotateMotor");
 
         hangMotor = hardwareMap.get(DcMotor.class, "hangMotor");
+        liftMotor = hardwareMap.get(DcMotor.class, "hangMotor");
 
         intake = hardwareMap.get(CRServo.class, "Intake");
         outtake = hardwareMap.get(Servo.class, "outTake");
+        depotDrop = hardwareMap.get(Servo.class, "depotDrop");
 
         rotateMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         slideMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -133,6 +152,13 @@ public class Crater extends LinearOpMode {
 
         intake.setDirection(CRServo.Direction.REVERSE);
 
+        liftMotor.setDirection((DcMotor.Direction.FORWARD));
+
+        liftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+
+        liftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
         telemetry.addData("Motors/Servos", "Initialized");
         telemetry.update();
 
@@ -149,7 +175,7 @@ public class Crater extends LinearOpMode {
         imu = hardwareMap.get(BNO055IMU.class, "imu");
         imu.initialize(parameters);
         telemetry.addData("imu", "initialized");
-        telemetry.update();
+
         //Set Motor Polarities
 
 
@@ -168,24 +194,33 @@ public class Crater extends LinearOpMode {
         telemetry.update();
 
 
-
+        // Send telemetry message to indicate successful Encoder reset
+        telemetry.addData("Path0",  "Starting at %7d",
+                liftMotor.getCurrentPosition());
+        telemetry.update();
 
         runtime.reset();
         /** Wait for the game to begin */
-        telemetry.addData(">", "Press Play to start tracking");
-        telemetry.update();
+        /** Activate Tensor Flow Object Detection. */
+
+        if (tfod != null) {
+            tfod.activate();
+        }
         while (!opModeIsActive()&&!isStopRequested()) {
             telemetry.addData("Status", "Waiting in Init");     telemetry.update(); }
 
         if (opModeIsActive()) {
-            //Land first
-            /** Activate Tensor Flow Object Detection. */
-            if (tfod != null) {
-                tfod.activate();
-            }
             telemetry.addData("Change: ", "Rotate Motor set power 0.3");
             telemetry.update();
             rotateMotor.setPower(0.3);
+            depotDrop.setPosition(1);
+
+            //Land first
+            encoderLift(true,1,10);
+
+
+
+
 
             telemetry.addData("Change: ", "10 Inches forward");
             telemetry.update();
@@ -255,67 +290,94 @@ public class Crater extends LinearOpMode {
             leftOuterDrive.setPower(0);
             rightInnerDrive.setPower(0);
             rightOuterDrive.setPower(0);
-            sleep(500);
+            sleep(150);
             currentAngle = angles.firstAngle;
-            //Since we're facing the mineral we can collect the mineral by lowering the intake and rotating the intake and driving into it.
-            rotateSlide(true);
-            encoderDrive(DRIVE_SPEED,15,14,10);
-            //We assume we got it in and rotate the intake up.
-            rotateSlide(false);
-            //back up and complete path
-            encoderDrive(DRIVE_SPEED,-5,-4,10);
+
             //Drive past minerals based on where the robot is located
             if(currentAngle >= 20){
                 telemetry.addData("Guess: ", "Left Side");
                 telemetry.update();
                 //left side
-                //Drive Forward to get near wall
-                gyroDrive(DRIVE_SPEED,15,45);
-                gyroTurn(TURN_SPEED,-45);
+                //Drive into the mineral
+                encoderDrive(1,22,22,10);
+                //back up and complete path
+                encoderDrive(1,-14,-14,10);
+                //Turn to drive past minerals
+                gyroTurn(DRIVE_SPEED,90);
+                //Drive past minerals
+                gyroDrive(0.9,25,90);
+                //Face towards wall
+                gyroTurn(DRIVE_SPEED,45);
+                //Drive towards wall
+                gyroDrive(0.85,14,45);
+                //Turn to face depot (Its at 50 because it would hit the other team's mineral.
+                gyroTurn(TURN_SPEED,-50);
                 //Drive into depot
+                //Drive back into depot
+                gyroDrive(0.9,-45,-50);
+                //drop Marker
+                depotDrop.setPosition(0.4);
+                sleep(500);
+                //Drive into crater
+                gyroDrive(0.9,70,-50);
             }else if(currentAngle <= -20){
                 telemetry.addData("Guess: ", "Right Side");
                 telemetry.update();
                 //right side
+                //Drive into the mineral
+                encoderDrive(1,21,20,10);
+                //back up and complete path
+                encoderDrive(1,-12,-11,10);
                 //rotate to right to go past minerals
                 gyroTurn(TURN_SPEED,90);
                 //Drive past others
                 gyroDrive(DRIVE_SPEED,40,90);
+                //Face wall
                 gyroTurn(TURN_SPEED,45);
+                //Drive to wall
                 gyroDrive(DRIVE_SPEED,13,45);
+                //Turn to back to depot
                 gyroTurn(TURN_SPEED,-45);
                 //Drive into depot
+                //Drive back into depot
+                gyroDrive(0.9,-45,-45);
+                //drop Marker
+                depotDrop.setPosition(0.4);
+                sleep(500);
+                //Drive into crater
+                gyroDrive(0.9,65,-45);
             }else{
                 telemetry.addData("Guess: ", "Center");
                 telemetry.update();
                 //Assume center
+                //Drive into the mineral
+                encoderDrive(1,19,18,10);
+                //back up and complete path
+                encoderDrive(1,-12,-11,10);
                 //rotate to right to go past minerals
                 gyroTurn(TURN_SPEED,90);
                 //Drive past others
                 gyroDrive(DRIVE_SPEED,30,90);
+                //Turn to face wall
                 gyroTurn(TURN_SPEED,45);
-                gyroDrive(DRIVE_SPEED,3,45);
-                gyroTurn(TURN_SPEED,-45);
+                //Drive into wall
+                gyroDrive(0.9,14,45);
+                //Turn to face depot
+                gyroTurn(TURN_SPEED,-55);
                 //Drive into depot
+                //Drive back into depot
+                gyroDrive(0.9,-50,-55);
+                //drop Marker
+                depotDrop.setPosition(0.4);
+                sleep(250);
+                //Drive into crater
+                gyroDrive(0.9,63,-55);
             }
-            //Drive back into depot
-            gyroDrive(DRIVE_SPEED,-36,-45);
 
-            //move intake down to move outtake servo
             rotateSlide(true);
-            //drop Marker
-            outtake.setPosition(outTakePos2);
-            sleep(500);
-            //reset outtake servo
-            outtake.setPosition(outTakePos0);
-            sleep(250);
-            //pick up intake
-            rotateSlide(false);
 
-            //Drive into crater
-            gyroDrive(DRIVE_SPEED,65,-45);
-            //drop slide into crater
-            rotateSlide(true);
+
+
 
         }
         if (tfod != null) {
@@ -404,7 +466,7 @@ public class Crater extends LinearOpMode {
         int tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
                 "tfodMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         TFObjectDetector.Parameters tfodParameters = new TFObjectDetector.Parameters(tfodMonitorViewId);
-        tfodParameters.minimumConfidence = 0.3;
+        tfodParameters.minimumConfidence = 0.5;
         tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
         tfod.loadModelFromAsset(TFOD_MODEL_ASSET, LABEL_GOLD_MINERAL, LABEL_SILVER_MINERAL);
     }
@@ -548,6 +610,62 @@ public class Crater extends LinearOpMode {
             rightOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
     }
+
+
+
+    public void encoderLift(boolean raiseUp, double speed,
+                            double timeoutS) {
+        int newLiftTarget;
+
+
+        // Ensure that the opmode is still active
+        if (opModeIsActive()) {
+
+            if (raiseUp == true) {
+                newLiftTarget = liftTargetUp;
+            } else if (raiseUp == false) {
+                newLiftTarget = liftTargetDown;
+            } else {
+                newLiftTarget = liftTargetDown;
+            }
+
+            liftMotor.setTargetPosition(newLiftTarget);
+
+            // Turn On RUN_TO_POSITION
+            liftMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+
+            // reset the timeout time and start motion.
+            runtime.reset();
+            liftMotor.setPower(Math.abs(speed));
+
+            // keep looping while we are still active, and there is time left, and both motors are running.
+            // Note: We use (isBusy() && isBusy()) in the loop test, which means that when EITHER motor hits
+            // its target position, the motion will stop.  This is "safer" in the event that the robot will
+            // always end the motion as soon as possible.
+            // However, if you require that BOTH motors have finished their moves before the robot continues
+            // onto the next step, use (isBusy() || isBusy()) in the loop test.
+            while (opModeIsActive() &&
+                    (runtime.seconds() < timeoutS) &&
+                    (liftMotor.isBusy())) {
+
+                // Display it for the driver.
+                telemetry.addData("Path1", "Running to %7d", newLiftTarget);
+                telemetry.addData("Path2", "Running at %7d",
+                        liftMotor.getCurrentPosition());
+                telemetry.update();
+            }
+
+            // Stop all motion;
+            liftMotor.setPower(0);
+
+            // Turn off RUN_TO_POSITION
+            liftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+            //  sleep(250);   // optional pause after each move
+        }
+    }
+
     public void gyroTurn (  double speed, double angle) {
 
         // keep looping while we are still active, and not on heading.

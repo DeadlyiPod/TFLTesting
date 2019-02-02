@@ -66,8 +66,13 @@ import org.firstinspires.ftc.robotcontroller.external.samples.HardwarePushbot;
  */
 
 @Autonomous(name="Lift Method", group="a")
-@Disabled
+//@Disabled
 public class Lift extends LinearOpMode {
+
+
+    //Lead Screw Lift Targets
+    int liftTargetUp = 18000;
+    int liftTargetDown = 0;
 
     /* Declare OpMode members. */
     private DcMotor liftMotor = null;
@@ -87,7 +92,7 @@ public class Lift extends LinearOpMode {
          * Initialize the drive system variables.
          * The init() method of the hardware class does all the work here
          */
-        liftMotor = hardwareMap.get(DcMotor.class, "liftMotor");
+        liftMotor = hardwareMap.get(DcMotor.class, "hangMotor");
 
         // Send telemetry message to signify robot waiting;
         telemetry.addData("Status", "Resetting Encoders");    //
@@ -110,9 +115,11 @@ public class Lift extends LinearOpMode {
 
         // Step through each leg of the path,
         // Note: Reverse movement is obtained by setting a negative distance (not speed)
-        encoderLift(LIFT_SPEED,  8,  5.0);
-        encoderLift(LIFT_SPEED, -8, 5.0);
+        encoderLift(true, LIFT_SPEED,    20.0);
+        sleep(20000);
+        encoderLift(false, LIFT_SPEED,  20.0);
         sleep(1000);     // pause for servos to move
+
 
         telemetry.addData("Path", "Complete");
         telemetry.update();
@@ -126,8 +133,7 @@ public class Lift extends LinearOpMode {
      *  2) Move runs out of time
      *  3) Driver stops the opmode running.
      */
-    public void encoderLift(double speed,
-                             double liftMillimeters,
+    public void encoderLift(boolean raiseUp, double speed,
                              double timeoutS) {
         int newLiftTarget;
 
@@ -135,8 +141,14 @@ public class Lift extends LinearOpMode {
         // Ensure that the opmode is still active
         if (opModeIsActive()) {
 
-            // Determine new target position, and pass to motor controller
-            newLiftTarget = liftMotor.getCurrentPosition() + (int)(liftMillimeters * COUNTS_PER_MILLIMETER);
+            if (raiseUp == true) {
+                newLiftTarget = liftTargetUp;
+            } else if (raiseUp == false) {
+                newLiftTarget = liftTargetDown;
+            } else {
+                newLiftTarget = liftTargetDown;
+            }
+
             liftMotor.setTargetPosition(newLiftTarget);
 
             // Turn On RUN_TO_POSITION
