@@ -28,7 +28,7 @@ import java.util.Locale;
 /**
  * Created by Guard on 11/1/2018.
  */
-@Autonomous(name = "RedDepot", group = "Autonomous")
+@Autonomous(name = "Depot", group = "Autonomous")
 public class RedDepot extends LinearOpMode {
 
     Orientation angles;
@@ -50,6 +50,9 @@ public class RedDepot extends LinearOpMode {
 
     private CRServo intake = null;
     private Servo outtake = null;
+
+    private Servo depotDrop = null;
+
 
     double outTakePos0 = 0.95;
     double outTakePos1 = 0.65;
@@ -73,9 +76,9 @@ public class RedDepot extends LinearOpMode {
     static final double     TURN_SPEED              = 0.4;     // Nominal half speed for better accuracy.
 
     //Gyroscopic Drive Settings
-    static final double     HEADING_THRESHOLD       = 1 ;      // As tight as we can make it with an integer gyro
-    static final double     P_TURN_COEFF            = 0.07;     // Larger is more responsive, but also less stable
-    static final double     P_DRIVE_COEFF           = 0.08;     // Larger is more responsive, but also less stable
+    static final double     HEADING_THRESHOLD       = 2 ;      // As tight as we can make it with an integer gyro
+    static final double     P_TURN_COEFF            = 0.03;     // Larger is more responsive, but also less stable
+    static final double     P_DRIVE_COEFF           = 0.05;     // Larger is more responsive, but also less stable
 
     //Vuforia files?
     private static final String TFOD_MODEL_ASSET = "RoverRuckus.tflite";
@@ -89,6 +92,25 @@ public class RedDepot extends LinearOpMode {
 
     //Declare Tensorflow Lite
     private TFObjectDetector tfod;
+
+
+    //LEAD SCREW VARS
+    //Lead Screw Lift Targets
+    int liftTargetUp = 18000;
+    int liftTargetDown = 0;
+
+    //Servo Position Vars
+    double upPos = 1;
+    double downPos = 0;
+
+    /* Declare OpMode members. */
+    private DcMotor liftMotor = null;
+
+    static final double     LIFT_COUNTS_PER_MOTOR_REV    = 560;    // eg: TETRIX Motor Encoder
+    static final double     GEAR_REDUCTION          = 1.25 ;     // This is < 1.0 if geared UP
+    static final double     LEAD_ROD_THREAD_MM      = 8.0 ;     // For figuring circumference
+    static final double     COUNTS_PER_MILLIMETER   = ((LIFT_COUNTS_PER_MOTOR_REV * GEAR_REDUCTION)/LEAD_ROD_THREAD_MM);
+    static final double     LIFT_SPEED              = 0.6;
 
 
     private ElapsedTime runtime;
@@ -111,6 +133,10 @@ public class RedDepot extends LinearOpMode {
 
         intake = hardwareMap.get(CRServo.class, "Intake");
         outtake = hardwareMap.get(Servo.class, "outTake");
+        depotDrop = hardwareMap.get(Servo.class, "depotDrop");
+
+
+        liftMotor = hardwareMap.get(DcMotor.class, "hangMotor");
 
         rotateMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         slideMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -127,8 +153,14 @@ public class RedDepot extends LinearOpMode {
 
         slideMotor.setDirection(DcMotor.Direction.REVERSE);
 
-
         intake.setDirection(CRServo.Direction.REVERSE);
+
+        liftMotor.setDirection((DcMotor.Direction.FORWARD));
+
+        liftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+
+        liftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         telemetry.addData("Motors/Servos", "Initialized");
         telemetry.update();
@@ -171,22 +203,30 @@ public class RedDepot extends LinearOpMode {
         /** Wait for the game to begin */
         telemetry.addData(">", "Press Play to start tracking");
         telemetry.update();
+
+        /** Activate Tensor Flow Object Detection. */
+        if (tfod != null) {
+            tfod.activate();
+        }
+
         while (!opModeIsActive()&&!isStopRequested()) {
             telemetry.addData("Status", "Waiting in Init");     telemetry.update(); }
 
         if (opModeIsActive()) {
+            telemetry.addData("Change: ", "Rotate Motor set power 0.3");
+            telemetry.update();
+            rotateMotor.setPower(0.3);
+            depotDrop.setPosition(upPos);
             //Land first
-            /** Activate Tensor Flow Object Detection. */
-            if (tfod != null) {
-                tfod.activate();
-            }
+            encoderLift(true,1,10);
+
             telemetry.addData("Change: ", "Rotate Motor set power 0.3");
             telemetry.update();
             rotateMotor.setPower(0.3);
 
             telemetry.addData("Change: ", "5 Inches forward");
             telemetry.update();
-            gyroDrive(0.5,5,0);
+            gyroDrive(0.5,10,0);
 
             telemetry.addData("Change: ", "Turn to -45 degrees");
             telemetry.update();
@@ -196,21 +236,31 @@ public class RedDepot extends LinearOpMode {
             telemetry.addData("Change: ", "Starting loop");
             telemetry.update();
             int goldMineralX = -1;
-            //Turn on motors to rotate.
-            //leftInnerDrive.setPower(-0.01);
-            leftOuterDrive.setPower(-0.05);
-            //rightInnerDrive.setPower(0.01);
-            rightOuterDrive.setPower(0.05);
+            int goldMineralY = -1;
+            boolean isFound = false;
+            leftOuterDrive.setPower(-0.15);
+            rightOuterDrive.setPower(0.15);
 
 
-            while(goldMineralX > 450 || goldMineralX < 270){
+            while((goldMineralX > 450 || goldMineralX < 270) && opModeIsActive()){
                 // Rotate a lil to the left each time (Moved to top because it will
                 // check the position of the gold mineral before moving.)
+                angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+                gravity  = imu.getGravity();
 
-                telemetry.addData("Current angle: ", currentAngle);
+                telemetry.addData("Current angle: ", angles.firstAngle);
                 telemetry.addData("Current GoldX: ", goldMineralX);
+                telemetry.addData("Current GoldY: ", goldMineralY);
                 telemetry.update();
 
+                //If they're not detected after a certain angle, go back and re-scan until you can find one.
+                if (angles.firstAngle > 45){
+                    leftOuterDrive.setPower(0.1);
+                    rightOuterDrive.setPower(-0.1);
+                }else if(angles.firstAngle < -45){
+                    leftOuterDrive.setPower(-0.1);
+                    rightOuterDrive.setPower(0.1);
+                }
 
 
                 if(tfod != null) {
@@ -218,9 +268,18 @@ public class RedDepot extends LinearOpMode {
 
                     if(updatedRecognitions != null){
                         for(Recognition recognition : updatedRecognitions){
-                            if(recognition.getTop() < 120) {
+                            if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)){
+                                telemetry.addData("Gold Mineral Found: ", isFound);
+                            }else{
+                                telemetry.addData("Gold Mineral Found: ", isFound);
+                            }
+                            telemetry.update();
+                            if(recognition.getTop() > 120 ) {
                                 if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)) {
                                     goldMineralX = (int) recognition.getLeft();
+                                    goldMineralY = (int) recognition.getTop();
+                                    isFound = true;
+
                                 }
                             }
                         }
@@ -235,66 +294,84 @@ public class RedDepot extends LinearOpMode {
             rightOuterDrive.setPower(0);
             sleep(500);
             currentAngle = angles.firstAngle;
-            //Since we're facing the mineral we can collect the mineral by lowering the intake and rotating the intake and driving into it.
-            rotateSlide(true);
-            intake.setPower(-1);
-            encoderDrive(DRIVE_SPEED,24,28,10);
+
+
             //We assume we got it in and rotate the intake up.
-            rotateSlide(false);
-            //back up and complete path
-            encoderDrive(DRIVE_SPEED,-12,-16,10);
-            intake.setPower(0);
+
+
+
             //Drive past minerals based on where the robot is located
             if(currentAngle >= 20){
                 telemetry.addData("Guess: ", "Left Side");
                 telemetry.update();
                 //left side
-                //Drive Forward to get near wall
-                gyroDrive(DRIVE_SPEED,30,45);
-                gyroTurn(TURN_SPEED,135);
-                //Drive into depot
+                //Since we're facing the mineral we can collect the mineral by lowering the intake and rotating the intake and driving into it.
+
+                encoderDrive(1.00,26,26,10);
+                //back up and complete path
+                encoderDrive(1.00,-20,-20,10);
+                //Turn and drive to get past minerals
+                gyroTurn(TURN_SPEED, 85);
+                gyroDrive(DRIVE_SPEED, 46,85 );
+
+                //Turn back to depot and drive
+                gyroTurn(TURN_SPEED, 128);
+                gyroDrive(0.9, -56, 128);
+
+                //Drop marker
+                depotDrop.setPosition(downPos);
+                sleep(500);
+
+                //Drive Forward to crater
+                gyroDrive(0.9,66,128);
             }else if(currentAngle <= -20){
                 telemetry.addData("Guess: ", "Right Side");
                 telemetry.update();
                 //right side
-                //rotate to right to go past minerals
-                gyroTurn(TURN_SPEED,90);
-                //Drive past others
-                gyroDrive(DRIVE_SPEED,40,90);
-                gyroTurn(TURN_SPEED,45);
-                gyroDrive(DRIVE_SPEED,12,45);
-                gyroTurn(TURN_SPEED,135);
-                //Drive into depot
+                //Since we're facing the mineral we can collect the mineral by lowering the intake and rotating the intake and driving into it.
+
+                encoderDrive(1.00,26,26,10);
+                //back up and complete path
+                encoderDrive(1.00,-20,-20,10);
+                //Turn and drive to get past minerals
+                gyroTurn(TURN_SPEED, 85);
+                gyroDrive(DRIVE_SPEED, 50, 85);
+
+                //Turn back to depot and drive
+                gyroTurn(TURN_SPEED, 131);
+                gyroDrive(0.9, -56, 131);
+
+                //Drop marker
+                depotDrop.setPosition(downPos);
+                sleep(500);
+
+                //Drive Forward to crater
+                gyroDrive(0.9,66,128);
             }else{
                 telemetry.addData("Guess: ", "Center");
                 telemetry.update();
                 //Assume center
-                //rotate to right to go past minerals
-                gyroTurn(TURN_SPEED,90);
-                //Drive past others
-                gyroDrive(DRIVE_SPEED,30,90);
-                gyroTurn(TURN_SPEED,45);
-                gyroDrive(DRIVE_SPEED,5,45);
-                gyroTurn(TURN_SPEED,135);
-                //Drive into depot
+                //Since we're facing the mineral we can collect the mineral by lowering the intake and rotating the intake and driving into it.
+
+                encoderDrive(1.00,26,26,10);
+                //back up and complete path
+                encoderDrive(1.00,-20,-20,10);
+                //Turn and drive to get past minerals
+                gyroTurn(TURN_SPEED, 85);
+                gyroDrive(DRIVE_SPEED, 48, 85);
+
+                //Turn back to depot and drive
+                gyroTurn(TURN_SPEED, 131);
+                gyroDrive(0.9, -56, 131);
+
+                //Drop marker
+                depotDrop.setPosition(downPos);
+                sleep(500);
+
+                //Drive Forward to crater
+                gyroDrive(0.9,66,128);
             }
-            //Drive back into depot
-            gyroDrive(DRIVE_SPEED,-36,135);
-
-            //move intake down to move outtake servo
-            rotateSlide(true);
-            //drop Marker
-            outtake.setPosition(outTakePos2);
-            sleep(800);
-            //reset outtake servo
-            outtake.setPosition(outTakePos0);
-            sleep(500);
-            //pick up intake
-            rotateSlide(false);
-
-            //Drive into crater
-            gyroDrive(DRIVE_SPEED,72,135);
-            //drop slide into crater
+            sleep(350);
             rotateSlide(true);
 
 
@@ -484,7 +561,7 @@ public class RedDepot extends LinearOpMode {
         int tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
                 "tfodMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         TFObjectDetector.Parameters tfodParameters = new TFObjectDetector.Parameters(tfodMonitorViewId);
-        tfodParameters.minimumConfidence = 0.4;
+        tfodParameters.minimumConfidence = 0.5;
         tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
         tfod.loadModelFromAsset(TFOD_MODEL_ASSET, LABEL_GOLD_MINERAL, LABEL_SILVER_MINERAL);
     }
@@ -543,6 +620,59 @@ public class RedDepot extends LinearOpMode {
             leftOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             rightOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
+
+            //  sleep(250);   // optional pause after each move
+        }
+    }
+
+    public void encoderLift(boolean raiseUp, double speed,
+                            double timeoutS) {
+        int newLiftTarget;
+
+
+        // Ensure that the opmode is still active
+        if (opModeIsActive()) {
+
+            if (raiseUp == true) {
+                newLiftTarget = liftTargetUp;
+            } else if (raiseUp == false) {
+                newLiftTarget = liftTargetDown;
+            } else {
+                newLiftTarget = liftTargetDown;
+            }
+
+            liftMotor.setTargetPosition(newLiftTarget);
+
+            // Turn On RUN_TO_POSITION
+            liftMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+
+            // reset the timeout time and start motion.
+            runtime.reset();
+            liftMotor.setPower(Math.abs(speed));
+
+            // keep looping while we are still active, and there is time left, and both motors are running.
+            // Note: We use (isBusy() && isBusy()) in the loop test, which means that when EITHER motor hits
+            // its target position, the motion will stop.  This is "safer" in the event that the robot will
+            // always end the motion as soon as possible.
+            // However, if you require that BOTH motors have finished their moves before the robot continues
+            // onto the next step, use (isBusy() || isBusy()) in the loop test.
+            while (opModeIsActive() &&
+                    (runtime.seconds() < timeoutS) &&
+                    (liftMotor.isBusy())) {
+
+                // Display it for the driver.
+                telemetry.addData("Path1",  "Running to %7d", newLiftTarget);
+                telemetry.addData("Path2",  "Running at %7d",
+                        liftMotor.getCurrentPosition());
+                telemetry.update();
+            }
+
+            // Stop all motion;
+            liftMotor.setPower(0);
+
+            // Turn off RUN_TO_POSITION
+            liftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
             //  sleep(250);   // optional pause after each move
         }

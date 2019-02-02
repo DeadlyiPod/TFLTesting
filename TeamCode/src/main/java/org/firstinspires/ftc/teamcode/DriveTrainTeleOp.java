@@ -166,7 +166,7 @@ public class DriveTrainTeleOp extends LinearOpMode{
                     liftMotorPower = 0;
                 }
 
-                if (gamepad2.b) {
+                if (gamepad2.b && !gamepad2.start) {
                     depotDrop.setPosition(0);
                 }
                 if (gamepad2.x) {

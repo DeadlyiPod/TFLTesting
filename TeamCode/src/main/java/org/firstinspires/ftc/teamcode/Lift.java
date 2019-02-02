@@ -65,14 +65,14 @@ import org.firstinspires.ftc.robotcontroller.external.samples.HardwarePushbot;
  * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode list
  */
 
-@Autonomous(name="Lift Method", group="a")
+@Autonomous(name="HangReset", group="a")
 //@Disabled
 public class Lift extends LinearOpMode {
 
 
     //Lead Screw Lift Targets
-    int liftTargetUp = 18000;
-    int liftTargetDown = 0;
+    int liftTargetUp = 0;
+    int liftTargetDown = -18000;
 
     /* Declare OpMode members. */
     private DcMotor liftMotor = null;
@@ -82,7 +82,7 @@ public class Lift extends LinearOpMode {
     static final double     GEAR_REDUCTION          = 1.25 ;     // This is < 1.0 if geared UP
     static final double     LEAD_ROD_THREAD_MM      = 8.0 ;     // For figuring circumference
     static final double     COUNTS_PER_MILLIMETER   = ((COUNTS_PER_MOTOR_REV * GEAR_REDUCTION)/LEAD_ROD_THREAD_MM);
-    static final double     LIFT_SPEED              = 0.6;
+    static final double     LIFT_SPEED              = 0.3;
     static final double     TURN_SPEED              = 0.5;
 
     @Override
@@ -116,8 +116,8 @@ public class Lift extends LinearOpMode {
         // Step through each leg of the path,
         // Note: Reverse movement is obtained by setting a negative distance (not speed)
         encoderLift(true, LIFT_SPEED,    20.0);
-        sleep(20000);
-        encoderLift(false, LIFT_SPEED,  20.0);
+        sleep(1000);
+        encoderLift(false, LIFT_SPEED,  30.0);
         sleep(1000);     // pause for servos to move
 
 
