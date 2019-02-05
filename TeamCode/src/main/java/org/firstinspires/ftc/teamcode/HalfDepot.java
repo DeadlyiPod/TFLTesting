@@ -6,7 +6,6 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
@@ -28,8 +27,9 @@ import java.util.Locale;
 /**
  * Created by Guard on 11/1/2018.
  */
-@Autonomous(name = "Depot", group = "Autonomous")
-public class RedDepot extends LinearOpMode {
+@Autonomous(name = "Half'/vv" +
+        "N''Depot", group = "Autonomous")
+public class HalfDepot extends LinearOpMode {
 
     Orientation angles;
     Acceleration gravity;
@@ -306,20 +306,13 @@ public class RedDepot extends LinearOpMode {
                 encoderDrive(1.00,26,26,10);
                 //back up and complete path
                 encoderDrive(1.00,-20,-20,10);
-                //Turn and drive to get past minerals
-                gyroTurn(TURN_SPEED, 85);
-                gyroDrive(DRIVE_SPEED, 46,85 );
-
-                //Turn back to depot and drive
-                gyroTurn(TURN_SPEED, 128);
-                gyroDrive(0.9, -56, 128);
-
-                //Drop marker
+                //turn around
+                gyroTurn(TURN_SPEED, 180);
+                //Back into depot
+                gyroDrive(DRIVE_SPEED, -30,180 );
+                //drop depot servo
                 depotDrop.setPosition(downPos);
-                sleep(500);
-
-                //Drive Forward to crater
-                gyroDrive(0.9,66,128);
+                gyroDrive(DRIVE_SPEED, 15, 180);
             }else if(currentAngle <= -20){
                 telemetry.addData("Guess: ", "Right Side");
                 telemetry.update();
@@ -329,20 +322,13 @@ public class RedDepot extends LinearOpMode {
                 encoderDrive(1.00,26,26,10);
                 //back up and complete path
                 encoderDrive(1.00,-20,-20,10);
-                //Turn and drive to get past minerals
-                gyroTurn(TURN_SPEED, 85);
-                gyroDrive(DRIVE_SPEED, 50, 85);
-
-                //Turn back to depot and drive
-                gyroTurn(TURN_SPEED, 131);
-                gyroDrive(0.9, -56, 131);
-
-                //Drop marker
+                //turn around
+                gyroTurn(TURN_SPEED, 180);
+                //Back into depot
+                gyroDrive(DRIVE_SPEED, -30,180 );
+                //drop depot servo
                 depotDrop.setPosition(downPos);
-                sleep(500);
-
-                //Drive Forward to crater
-                gyroDrive(0.9,66,128);
+                gyroDrive(DRIVE_SPEED, 15, 180);
             }else{
                 telemetry.addData("Guess: ", "Center");
                 telemetry.update();
@@ -352,23 +338,15 @@ public class RedDepot extends LinearOpMode {
                 encoderDrive(1.00,26,26,10);
                 //back up and complete path
                 encoderDrive(1.00,-20,-20,10);
-                //Turn and drive to get past minerals
-                gyroTurn(TURN_SPEED, 85);
-                gyroDrive(DRIVE_SPEED, 48, 85);
-
-                //Turn back to depot and drive
-                gyroTurn(TURN_SPEED, 131);
-                gyroDrive(0.9, -56, 131);
-
-                //Drop marker
+                //turn around
+                gyroTurn(TURN_SPEED, 180);
+                //Back into depot
+                gyroDrive(DRIVE_SPEED, -30,180 );
+                //drop depot servo
                 depotDrop.setPosition(downPos);
-                sleep(500);
-
-                //Drive Forward to crater
-                gyroDrive(0.9,66,128);
+                gyroDrive(DRIVE_SPEED, 15, 180);
             }
             sleep(350);
-            rotateSlide(true);
 
 
 

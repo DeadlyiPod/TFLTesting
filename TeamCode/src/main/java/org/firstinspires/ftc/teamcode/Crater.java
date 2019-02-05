@@ -98,6 +98,10 @@ public class Crater extends LinearOpMode {
     int liftTargetUp = 18000;
     int liftTargetDown = 0;
 
+    //Servo Position Vars
+    double upPos = 1;
+    double downPos = 0;
+
     /* Declare OpMode members. */
     private DcMotor liftMotor = null;
 
@@ -172,7 +176,7 @@ public class Crater extends LinearOpMode {
         telemetry.addData("imu", "not initialized");
         telemetry.update();
 
-        imu = hardwareMap.get(BNO055IMU.class, "imu");
+        imu = hardwareMap.get(BNO055IMU.class, "imu 1");
         imu.initialize(parameters);
         telemetry.addData("imu", "initialized");
 
@@ -213,7 +217,7 @@ public class Crater extends LinearOpMode {
             telemetry.addData("Change: ", "Rotate Motor set power 0.3");
             telemetry.update();
             rotateMotor.setPower(0.3);
-            depotDrop.setPosition(1);
+            depotDrop.setPosition(upPos);
 
             //Land first
             encoderLift(true,1,10);
@@ -240,7 +244,7 @@ public class Crater extends LinearOpMode {
             rightOuterDrive.setPower(0.15);
 
 
-            while((goldMineralX > 450 || goldMineralX < 270) && opModeIsActive()){
+            while((goldMineralX > 450 || goldMineralX < 270) && opModeIsActive() && !isFound){
                 // Rotate a lil to the left each time (Moved to top because it will
                 // check the position of the gold mineral before moving.)
                 angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
@@ -253,11 +257,7 @@ public class Crater extends LinearOpMode {
 
                 //If they're not detected after a certain angle, go back and re-scan until you can find one.
                 if (angles.firstAngle > 45){
-                    leftOuterDrive.setPower(0.1);
-                    rightOuterDrive.setPower(-0.1);
-                }else if(angles.firstAngle < -45){
-                    leftOuterDrive.setPower(-0.1);
-                    rightOuterDrive.setPower(0.1);
+                    isFound = true;
                 }
 
 
@@ -272,14 +272,14 @@ public class Crater extends LinearOpMode {
                                 telemetry.addData("Gold Mineral Found: ", isFound);
                             }
                             telemetry.update();
-                            if(recognition.getTop() > 120 ) {
+                            //if(recognition.getTop() > 120 ) {
                                 if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)) {
                                     goldMineralX = (int) recognition.getLeft();
                                     goldMineralY = (int) recognition.getTop();
                                     isFound = true;
 
                                 }
-                            }
+                            //}
                         }
                         //gyroTurn(0.75,currentAngle);
                     }
@@ -316,7 +316,7 @@ public class Crater extends LinearOpMode {
                 //Drive back into depot
                 gyroDrive(0.9,-45,-50);
                 //drop Marker
-                depotDrop.setPosition(0.4);
+                depotDrop.setPosition(downPos);
                 sleep(500);
                 //Drive into crater
                 gyroDrive(0.9,70,-50);
@@ -342,7 +342,7 @@ public class Crater extends LinearOpMode {
                 //Drive back into depot
                 gyroDrive(0.9,-45,-45);
                 //drop Marker
-                depotDrop.setPosition(0.4);
+                depotDrop.setPosition(downPos);
                 sleep(500);
                 //Drive into crater
                 gyroDrive(0.9,65,-45);
@@ -368,13 +368,14 @@ public class Crater extends LinearOpMode {
                 //Drive back into depot
                 gyroDrive(0.9,-50,-55);
                 //drop Marker
-                depotDrop.setPosition(0.4);
+                depotDrop.setPosition(downPos);
                 sleep(250);
                 //Drive into crater
                 gyroDrive(0.9,63,-55);
             }
 
             rotateSlide(true);
+
 
 
 
@@ -466,7 +467,7 @@ public class Crater extends LinearOpMode {
         int tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
                 "tfodMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         TFObjectDetector.Parameters tfodParameters = new TFObjectDetector.Parameters(tfodMonitorViewId);
-        tfodParameters.minimumConfidence = 0.5;
+        tfodParameters.minimumConfidence = 0.1;
         tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
         tfod.loadModelFromAsset(TFOD_MODEL_ASSET, LABEL_GOLD_MINERAL, LABEL_SILVER_MINERAL);
     }

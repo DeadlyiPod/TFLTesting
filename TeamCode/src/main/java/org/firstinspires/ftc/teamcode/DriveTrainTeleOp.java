@@ -46,6 +46,8 @@ public class DriveTrainTeleOp extends LinearOpMode{
     double outTakePos1 = 0.85;
     double outTakePos2 = 0.67;
 
+    int hangInitPos;
+
 
     @Override
     public void runOpMode() {
@@ -97,6 +99,8 @@ public class DriveTrainTeleOp extends LinearOpMode{
             telemetry.addData("Status", "Waiting in Init");     telemetry.update(); }
         runtime.reset();
 
+        hangInitPos = hangMotor.getCurrentPosition();
+
         //run until driver presses STOP
         while (opModeIsActive()) {
 
@@ -137,13 +141,19 @@ public class DriveTrainTeleOp extends LinearOpMode{
 
                 rightInnerPower = Range.scale(rightInnerPower, -1.00, 1.00, -speedScale, speedScale);
                 rightOuterPower = Range.scale(rightOuterPower, -1.00, 1.00, -speedScale, speedScale);
-                if (gamepad2.y && hangMotor.getCurrentPosition() < 18000) {
+                if (gamepad2.y && hangMotor.getCurrentPosition() < (0)) {
                     hangMotorPower = 1;
-                }else if (gamepad2.a && hangMotor.getCurrentPosition() > -20) {
+                }else if (gamepad2.a && hangMotor.getCurrentPosition() > (-18000)) {
                     hangMotorPower = -1;
-                } else {
+                } else if (gamepad2.y && gamepad2.x) {
+                    hangMotorPower = 1;
+                } else if (gamepad2.a && gamepad2.x) {
+                    hangMotorPower = -1;
+                }else {
                     hangMotorPower = 0;
                 }
+
+
 
 
                 //intakePower = Range.scale(-gamepad2.left_trigger + gamepad2.right_trigger,-1,1,-0.3,0.3);
