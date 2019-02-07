@@ -15,7 +15,7 @@ public class DogeCV {
     public enum AreaScoringMethod {
         MAX_AREA,
         PERFECT_AREA,
-        COLOR_DEVIATION
+        COLOR_DEVIATION,
     }
 
 

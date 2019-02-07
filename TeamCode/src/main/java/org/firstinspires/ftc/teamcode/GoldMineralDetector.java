@@ -1,11 +1,8 @@
-package com.disnodeteam.dogecv.detectors.roverrukus;
-
-import android.util.Log;
+package org.firstinspires.ftc.teamcode;
 
 import com.disnodeteam.dogecv.DogeCV;
 import com.disnodeteam.dogecv.detectors.DogeCVDetector;
 import com.disnodeteam.dogecv.filters.DogeCVColorFilter;
-import com.disnodeteam.dogecv.filters.HSVColorFilter;
 import com.disnodeteam.dogecv.filters.LeviColorFilter;
 import com.disnodeteam.dogecv.scoring.MaxAreaScorer;
 import com.disnodeteam.dogecv.scoring.PerfectAreaScorer;
@@ -13,7 +10,6 @@ import com.disnodeteam.dogecv.scoring.RatioScorer;
 
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
-import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
@@ -27,27 +23,27 @@ import java.util.List;
  * Created by Victo on 9/10/2018.
  */
 
-public class GoldDetector extends DogeCVDetector {
+public class GoldMineralDetector extends DogeCVDetector {
 
     // Defining Mats to be used.
     private Mat displayMat = new Mat(); // Display debug info to the screen (this is what is returned)
     private Mat workingMat = new Mat(); // Used for preprocessing and working with (blurring as an example)
-    private Mat maskYellow = new Mat(); // Yellow Mask returned by color filter
-    private Mat hierarchy  = new Mat(); // hierarchy used by coutours
+    private Mat mask       = new Mat(); // Mask returned by color filter
+    private Mat hierarchy  = new Mat(); // hierarchy used by coutnours
 
     // Results of the detector
     private boolean found    = false; // Is the gold mineral found
     private Point   screenPosition = new Point(); // Screen position of the mineral
-    private int xValue;
-    private int yValue;
     private Rect    foundRect = new Rect(); // Found rect
 
-    public DogeCV.AreaScoringMethod areaScoringMethod = DogeCV.AreaScoringMethod.MAX_AREA; // Setting to decide to use MaxAreaScorer or PerfectAreaScorer
+    //X and Y Values
+    int xValue;
+    int yValue;
+
+    public DogeCV.AreaScoringMethod areaScoringMethod = DogeCV.AreaScoringMethod.PERFECT_AREA; // Setting to decide to use MaxAreaScorer or PerfectAreaScorer
 
     //Create the default filters and scorers
-    public DogeCVColorFilter yellowFilter      = new HSVColorFilter(new Scalar(18, 187, 154), new Scalar(18, 68,101)); //Default Yellow filter
-    //LeviColorFilter(LeviColorFilter.ColorPreset.YELLOW);
-    //HSVColorFilter(new Scalar(33, 60, 76), new Scalar(14, 20,12));
+    public DogeCVColorFilter colorFilter       = new LeviColorFilter(LeviColorFilter.ColorPreset.YELLOW); //Default Yellow filter
 
     public RatioScorer       ratioScorer       = new RatioScorer(1.0, 3);          // Used to find perfect squares
     public MaxAreaScorer     maxAreaScorer     = new MaxAreaScorer( 0.01);                    // Used to find largest objects
@@ -56,9 +52,9 @@ public class GoldDetector extends DogeCVDetector {
     /**
      * Simple constructor
      */
-    public GoldDetector() {
+    public GoldMineralDetector() {
         super();
-        detectorName = "Gold Detector"; // Set the detector name
+        detectorName = "Generic Detector"; // Set the detector name
     }
 
 
@@ -71,14 +67,14 @@ public class GoldDetector extends DogeCVDetector {
         input.release();
 
 
-        //Preprocess the working Mat (blur it then apply a yellow filter)
+        //Preprocess the working Mat (blur it then apply a color filter)
         Imgproc.GaussianBlur(workingMat,workingMat,new Size(5,5),0);
-        yellowFilter.process(workingMat.clone(),maskYellow);
+        colorFilter.process(workingMat.clone(),mask      );
 
         //Find contours of the yellow mask and draw them to the display mat for viewing
 
         List<MatOfPoint> contoursYellow = new ArrayList<>();
-        Imgproc.findContours(maskYellow, contoursYellow, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
+        Imgproc.findContours(mask      , contoursYellow, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
         Imgproc.drawContours(displayMat,contoursYellow,-1,new Scalar(230,70,70),2);
 
         // Current result
@@ -105,9 +101,10 @@ public class GoldDetector extends DogeCVDetector {
             Imgproc.rectangle(displayMat, bestRect.tl(), bestRect.br(), new Scalar(255,0,0),4);
             Imgproc.putText(displayMat, "Chosen", bestRect.tl(),0,1,new Scalar(255,255,255));
 
+            screenPosition = new Point(bestRect.x, bestRect.y);
             xValue = bestRect.x;
             yValue = bestRect.y;
-            screenPosition = new Point(bestRect.x, bestRect.y);
+
             foundRect = bestRect;
             found = true;
         }else{
@@ -136,18 +133,15 @@ public class GoldDetector extends DogeCVDetector {
             addScorer(perfectAreaScorer);
         }
 
-
-
     }
 
     /**
-     * Returns the gold element's last position in screen pixels
+     * Returns the element's last position in screen pixels
      * @return position in screen pixels
      */
     public Point getScreenPosition(){
         return screenPosition;
     }
-
     /**
      * Returns the gold element's last position's x value in pixels.
      * @return x position in screen pixels of the best value.
@@ -160,7 +154,7 @@ public class GoldDetector extends DogeCVDetector {
      */
     public int getyValue() {return yValue;}
     /**
-     * Returns the gold element's found rectangle
+     * Returns the element's found rectangle
      * @return gold element rect
      */
     public Rect getFoundRect() {
@@ -168,8 +162,8 @@ public class GoldDetector extends DogeCVDetector {
     }
 
     /**
-     * Returns if a gold mineral is being tracked/detected
-     * @return if a gold mineral is being tracked/detected
+     * Returns if a mineral is being tracked/detected
+     * @return if a mineral is being tracked/detected
      */
     public boolean isFound() {
         return found;

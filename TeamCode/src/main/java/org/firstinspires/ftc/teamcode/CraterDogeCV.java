@@ -100,6 +100,8 @@ public class CraterDogeCV extends LinearOpMode {
     WebcamName webcamName;
 
 
+
+
     //DogeCV Detector
     GoldDetector detector;
 
@@ -112,6 +114,12 @@ public class CraterDogeCV extends LinearOpMode {
     //Servo Position Vars
     double upPos = 1;
     double downPos = 0;
+
+    //Detector Vars
+    int center = 0;
+    int left = 0;
+    int right = 0;
+    String best = "";
 
     /* Declare OpMode members. */
     private DcMotor liftMotor = null;
@@ -140,6 +148,7 @@ public class CraterDogeCV extends LinearOpMode {
         vuforiaParameters.cameraName = webcamName;
         vuforia2 = new Dogeforia(vuforiaParameters);
         vuforia2.enableConvertFrameToBitmap();
+
 
         //Set up Gold detector
         detector = new GoldDetector();
@@ -234,6 +243,8 @@ public class CraterDogeCV extends LinearOpMode {
         telemetry.update();
         */
 
+
+
         // Send telemetry message to indicate successful Encoder reset
         telemetry.addData("Path0",  "Starting at %7d",
                 liftMotor.getCurrentPosition());
@@ -247,8 +258,39 @@ public class CraterDogeCV extends LinearOpMode {
             tfod.activate();
         }*/
         while (!opModeIsActive()&&!isStopRequested()) {
-            telemetry.addData("Status", "Waiting in Init");     telemetry.update(); }
+            telemetry.addData("Status", "Waiting in Init");
+            telemetry.addData("Guess: ", best);
+            telemetry.update();
+            for (int i = 0; i <= 10000; i++){
+                if(detector.getxValue() > 150 && detector.getxValue() < 400){
+                    center++;
+                }
+                if(detector.getxValue() > 400){
+                    left++;
+                }
+                else{
+                    right++;
+                }
+            }
+            if(center > left && center > right){
+                best = "Center";
+                center = 0;
+                right = 0;
+                left = 0;
+            }else if(left > center && left > right){
+                best = "Left";
+                center = 0;
+                right = 0;
+                left = 0;
+            }else if(right > center && right > left) {
+                best = "Right";
+                center = 0;
+                right = 0;
+                left = 0;
+            }}
         if (opModeIsActive()) {
+            telemetry.addData("Guess: ", best);
+            telemetry.addData("Values: ","%s\n%d\n%s\n%d\n%s\n%d\n","Center: ", center, "Right: ", right, "Left: ", left);
             telemetry.addData("Change: ", "Rotate Motor set power 0.3");
             telemetry.update();
             rotateMotor.setPower(0.3);
@@ -265,79 +307,20 @@ public class CraterDogeCV extends LinearOpMode {
             telemetry.update();
             gyroDrive(0.5,10,0);
 
-            telemetry.addData("Change: ", "Turn to -45 degrees");
-            telemetry.update();
-            gyroTurn(0.3,-45);
+
 
 
             telemetry.addData("Change: ", "Starting loop");
             telemetry.update();
-            int goldMineralX = -1;
-            int goldMineralY = -1;
             boolean isFound = false;
-            leftOuterDrive.setPower(-0.15);
-            rightOuterDrive.setPower(0.15);
 
-
-            while((goldMineralX > 450 || goldMineralX < 270) && opModeIsActive() && !isFound){
-                // Rotate a lil to the left each time (Moved to top because it will
-                // check the position of the gold mineral before moving.)
-                angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
-                gravity  = imu.getGravity();
-
-                telemetry.addData("Current angle: ", angles.firstAngle);
-                telemetry.addData("Current GoldX: ", goldMineralX);
-                telemetry.addData("Current GoldY: ", goldMineralY);
-                telemetry.update();
-
-                //If they're not detected after a certain angle, Default to just go left.
-                if (angles.firstAngle > 45){
-                    isFound = true;
-                }
-
-
-                goldMineralX = detector.getxValue();
-                goldMineralY = detector.getyValue();
-
-                if(goldMineralX > 450 || goldMineralX < 270){
-                    isFound = true;
-                }
-                /*if(tfod != null) {
-                    List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
-
-                    if(updatedRecognitions != null){
-                        for(Recognition recognition : updatedRecognitions){
-                            if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)){
-                                telemetry.addData("Gold Mineral Found: ", isFound);
-                            }else{
-                                telemetry.addData("Gold Mineral Found: ", isFound);
-                            }
-                            telemetry.update();
-                            //if(recognition.getTop() > 120 ) {
-                                if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)) {
-                                    goldMineralX = (int) recognition.getLeft();
-                                    goldMineralY = (int) recognition.getTop();
-                                    isFound = true;
-
-                                }
-                            //}
-                        }
-                        //gyroTurn(0.75,currentAngle);
-                    }
-                }*/
-            }
-            //Turn off all motors
-            leftInnerDrive.setPower(0);
-            leftOuterDrive.setPower(0);
-            rightInnerDrive.setPower(0);
-            rightOuterDrive.setPower(0);
-            sleep(150);
             currentAngle = angles.firstAngle;
 
             //Drive past minerals based on where the robot is located
-            if(currentAngle >= 20){
+            if(best.equalsIgnoreCase("Left")){
                 telemetry.addData("Guess: ", "Left Side");
                 telemetry.update();
+                gyroTurn(0.8,45);
                 //left side
                 //Drive into the mineral
                 encoderDrive(1,22,22,10);
@@ -361,9 +344,10 @@ public class CraterDogeCV extends LinearOpMode {
                 sleep(500);
                 //Drive into crater
                 gyroDrive(0.9,70,-50);
-            }else if(currentAngle <= -20){
+            }else if(best.equalsIgnoreCase("Right")){
                 telemetry.addData("Guess: ", "Right Side");
                 telemetry.update();
+                gyroTurn(0.8,45);
                 //right side
                 //Drive into the mineral
                 encoderDrive(1,21,20,10);
@@ -387,9 +371,10 @@ public class CraterDogeCV extends LinearOpMode {
                 sleep(500);
                 //Drive into crater
                 gyroDrive(0.9,65,-45);
-            }else{
+            }else if(best.equalsIgnoreCase("Center")){
                 telemetry.addData("Guess: ", "Center");
                 telemetry.update();
+
                 //Assume center
                 //Drive into the mineral
                 encoderDrive(1,19,18,10);

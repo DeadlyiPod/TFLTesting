@@ -5,6 +5,7 @@ import com.disnodeteam.dogecv.DogeCV;
 import com.disnodeteam.dogecv.Dogeforia;
 import com.disnodeteam.dogecv.detectors.roverrukus.GoldDetector;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
@@ -12,7 +13,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
 /**
  * Created by Bobby on 2/5/2019.
  */
-
+@TeleOp(name="TestDogeCV")
 public class TestDogeCV extends LinearOpMode {
 
     //Vuforia License
@@ -42,6 +43,11 @@ public class TestDogeCV extends LinearOpMode {
         detector.useDefaults();
         detector.areaScoringMethod = DogeCV.AreaScoringMethod.MAX_AREA;
         detector.downscale = 1;
+        detector.setSpeed(DogeCV.DetectionSpeed.VERY_SLOW);
+
+        detector.perfectAreaScorer.perfectArea = 5000;
+        detector.perfectAreaScorer.weight = 0.005;
+
 
         vuforia2.setDogeCVDetector(detector);
         vuforia2.enableDogeCV();
@@ -71,7 +77,9 @@ public class TestDogeCV extends LinearOpMode {
         }
 
 
+
     }
+
 
 
 }
