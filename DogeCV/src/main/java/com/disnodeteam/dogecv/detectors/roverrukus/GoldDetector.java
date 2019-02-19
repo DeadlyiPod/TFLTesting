@@ -45,13 +45,13 @@ public class GoldDetector extends DogeCVDetector {
     public DogeCV.AreaScoringMethod areaScoringMethod = DogeCV.AreaScoringMethod.MAX_AREA; // Setting to decide to use MaxAreaScorer or PerfectAreaScorer
 
     //Create the default filters and scorers
-    public DogeCVColorFilter yellowFilter      = new HSVColorFilter(new Scalar(18, 187, 154), new Scalar(18, 68,101)); //Default Yellow filter
+    public DogeCVColorFilter yellowFilter      = new HSVColorFilter(new Scalar(18, 194, 163), new Scalar(18, 61,71)); //Default Yellow filter
     //LeviColorFilter(LeviColorFilter.ColorPreset.YELLOW);
     //HSVColorFilter(new Scalar(33, 60, 76), new Scalar(14, 20,12));
 
-    public RatioScorer       ratioScorer       = new RatioScorer(1.0, 3);          // Used to find perfect squares
-    public MaxAreaScorer     maxAreaScorer     = new MaxAreaScorer( 0.01);                    // Used to find largest objects
-    public PerfectAreaScorer perfectAreaScorer = new PerfectAreaScorer(5000,0.05); // Used to find objects near a tuned area value
+    public RatioScorer       ratioScorer;//       = new RatioScorer(1.0, 3);          // Used to find perfect squares
+    public MaxAreaScorer     maxAreaScorer;//     = new MaxAreaScorer( 0.01);                    // Used to find largest objects
+    public PerfectAreaScorer perfectAreaScorer;// = new PerfectAreaScorer(300,0.05); // Used to find objects near a tuned area value
 
     /**
      * Simple constructor

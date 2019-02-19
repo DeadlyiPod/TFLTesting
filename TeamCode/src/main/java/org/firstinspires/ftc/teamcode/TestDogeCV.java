@@ -45,9 +45,8 @@ public class TestDogeCV extends LinearOpMode {
         detector.downscale = 1;
         detector.setSpeed(DogeCV.DetectionSpeed.VERY_SLOW);
 
-        detector.perfectAreaScorer.perfectArea = 5000;
-        detector.perfectAreaScorer.weight = 0.005;
-
+        detector.maxAreaScorer.weight = 0.01;
+        detector.ratioScorer.weight = 15;
 
         vuforia2.setDogeCVDetector(detector);
         vuforia2.enableDogeCV();
