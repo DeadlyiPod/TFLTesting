@@ -29,7 +29,7 @@ import java.util.Locale;
  * Created by Guard on 11/1/2018.
  */
 @Autonomous(name = "Depot", group = "Autonomous")
-public class RedDepot extends LinearOpMode {
+public class GreenDepot extends LinearOpMode {
 
     Orientation angles;
     Acceleration gravity;
@@ -209,10 +209,60 @@ public class RedDepot extends LinearOpMode {
             tfod.activate();
         }
 
+        int goldMineralX = -1;
+        int goldMineralY = -1;
+        boolean isFound = false;
+
+        int rightPosPoints = 0;
+        int centerPosPoints = 0;
+        int leftPosPoints = 0;
+
+
         while (!opModeIsActive()&&!isStopRequested()) {
-            telemetry.addData("Status", "Waiting in Init");     telemetry.update(); }
+            telemetry.addData("Status", "Waiting in Init");
+            telemetry.update();
+
+
+            if(tfod != null) {
+                List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
+
+                if(updatedRecognitions != null){
+                    for(Recognition recognition : updatedRecognitions){
+                        if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)){
+                            telemetry.addData("Gold Mineral Found: ", isFound);
+                        }else{
+                            telemetry.addData("Gold Mineral Found: ", isFound);
+                        }
+                        telemetry.update();
+                        if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)) {
+                            goldMineralX = (int) recognition.getLeft();
+                            goldMineralY = (int) recognition.getTop();
+                            isFound = true;
+                        }
+                    }
+
+                    if ((goldMineralX > 400) && isFound ) {
+                        rightPosPoints++;
+                    } else if ((goldMineralX < 400) && isFound) {
+                        centerPosPoints++;
+                    } else {
+                        leftPosPoints++;
+                    }
+                    telemetry.addData("Current GoldX: ", goldMineralX);
+                    telemetry.addData("Current GoldY: ", goldMineralY);
+                }
+
+            }
+
+            telemetry.update();
+        }
 
         if (opModeIsActive()) {
+
+            if (rightPosPoints > centerPosPoints) {
+                
+            }
+
             telemetry.addData("Change: ", "Rotate Motor set power 0.3");
             telemetry.update();
             rotateMotor.setPower(0.3);
@@ -235,54 +285,12 @@ public class RedDepot extends LinearOpMode {
 
             telemetry.addData("Change: ", "Starting loop");
             telemetry.update();
-            int goldMineralX = -1;
-            int goldMineralY = -1;
-            boolean isFound = false;
             leftOuterDrive.setPower(-0.15);
             rightOuterDrive.setPower(0.15);
 
 
-            while((goldMineralX > 450 || goldMineralX < 270) && opModeIsActive() && !isFound){
-                // Rotate a lil to the left each time (Moved to top because it will
-                // check the position of the gold mineral before moving.)
-                angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
-                gravity  = imu.getGravity();
-
-                telemetry.addData("Current angle: ", angles.firstAngle);
-                telemetry.addData("Current GoldX: ", goldMineralX);
-                telemetry.addData("Current GoldY: ", goldMineralY);
-                telemetry.update();
-
-                //If they're not detected after a certain angle, go back and re-scan until you can find one.
-                if (angles.firstAngle > 45){
-                    isFound = true;
-                }
 
 
-                if(tfod != null) {
-                    List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
-
-                    if(updatedRecognitions != null){
-                        for(Recognition recognition : updatedRecognitions){
-                            if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)){
-                                telemetry.addData("Gold Mineral Found: ", isFound);
-                            }else{
-                                telemetry.addData("Gold Mineral Found: ", isFound);
-                            }
-                            telemetry.update();
-                            //if(recognition.getTop() > 120 ) {
-                                if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)) {
-                                    goldMineralX = (int) recognition.getLeft();
-                                    goldMineralY = (int) recognition.getTop();
-                                    isFound = true;
-
-                                }
-                            //}
-                        }
-                        //gyroTurn(0.75,currentAngle);
-                    }
-                }
-            }
             //Turn off all motors
             leftInnerDrive.setPower(0);
             leftOuterDrive.setPower(0);
