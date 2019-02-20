@@ -99,6 +99,7 @@ public class DriveTrainTeleOp extends LinearOpMode{
             telemetry.addData("Status", "Waiting in Init");     telemetry.update(); }
         runtime.reset();
 
+
         hangInitPos = hangMotor.getCurrentPosition();
 
         //run until driver presses STOP
@@ -143,7 +144,7 @@ public class DriveTrainTeleOp extends LinearOpMode{
                 rightOuterPower = Range.scale(rightOuterPower, -1.00, 1.00, -speedScale, speedScale);
                 if (gamepad2.y && hangMotor.getCurrentPosition() < (0)) {
                     hangMotorPower = 1;
-                }else if (gamepad2.a && hangMotor.getCurrentPosition() > (-18000)) {
+                }else if (gamepad2.a && hangMotor.getCurrentPosition() > (-10800)) {
                     hangMotorPower = -1;
                 } else if (gamepad2.y && gamepad2.x) {
                     hangMotorPower = 1;
@@ -214,12 +215,17 @@ public class DriveTrainTeleOp extends LinearOpMode{
                 liftMotor.setPower(liftMotorPower);
                 hangMotor.setPower(hangMotorPower);
 
+                if(runtime.seconds() == 90){
+                    depotDrop.setPosition(1);
+                }
+
 
                 //Runtime, and Power Variables being sent to motor
                 telemetry.addData("Status", "Run Time: " + runtime.toString());
                 telemetry.addData("Drivetrain Encoder Values", "\n%s%d\n%s%d\n%s%d\n%s%d", "Left Inner Drive: ", leftInnerDrive.getCurrentPosition(), "Right Inner Drive: ", rightInnerDrive.getCurrentPosition(), "Left Outer Drive: ", leftOuterDrive.getCurrentPosition(), "Right Outer Drive:", rightOuterDrive.getCurrentPosition());
                 telemetry.addData("Hanging Motor Encoder: ", hangMotor.getCurrentPosition());
                 telemetry.update();
+
             } //Driving END
 
         }

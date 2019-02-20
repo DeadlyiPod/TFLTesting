@@ -699,6 +699,7 @@ public class Crater extends LinearOpMode {
             leftSpeed   = -(rightSpeed);
         }
 
+        
         // Send desired speeds to motors.
         leftOuterDrive.setPower(leftSpeed);
         rightOuterDrive.setPower(rightSpeed);
