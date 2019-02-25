@@ -3,7 +3,6 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -28,9 +27,8 @@ import java.util.Locale;
 /**
  * Created by Guard on 11/1/2018.
  */
-@Autonomous(name = "OldCrater", group = "Autonomous")
-@Disabled
-public class Crater extends LinearOpMode {
+@Autonomous(name = "Crater", group = "Autonomous")
+public class GreenCrater extends LinearOpMode {
 
     Orientation angles;
     Acceleration gravity;
@@ -49,11 +47,11 @@ public class Crater extends LinearOpMode {
     private DcMotor slideMotor = null;
     private DcMotor rotateMotor = null;
 
-    private DcMotor hangMotor = null;
-
     private CRServo intake = null;
     private Servo outtake = null;
+
     private Servo depotDrop = null;
+
 
     double outTakePos0 = 0.95;
     double outTakePos1 = 0.65;
@@ -74,9 +72,10 @@ public class Crater extends LinearOpMode {
 
     // These constants define the desired driving/control characteristics
     static final double     DRIVE_SPEED             = 0.7;     // Nominal speed for better accuracy.
+    static final double     TURN_SPEED              = 0.4;     // Nominal half speed for better accuracy.
 
     //Gyroscopic Drive Settings
-    static final double     HEADING_THRESHOLD       = 2 ;      // As tight as we can make it with an integer gyro
+    static final double     HEADING_THRESHOLD       = 1 ;      // As tight as we can make it with an integer gyro
     static final double     P_TURN_COEFF            = 0.03;     // Larger is more responsive, but also less stable
     static final double     P_DRIVE_COEFF           = 0.05;     // Larger is more responsive, but also less stable
 
@@ -94,10 +93,9 @@ public class Crater extends LinearOpMode {
     private TFObjectDetector tfod;
 
 
-
     //LEAD SCREW VARS
     //Lead Screw Lift Targets
-    int liftTargetUp = 18000;
+    int liftTargetUp = 10800;
     int liftTargetDown = 0;
 
     //Servo Position Vars
@@ -112,7 +110,6 @@ public class Crater extends LinearOpMode {
     static final double     LEAD_ROD_THREAD_MM      = 8.0 ;     // For figuring circumference
     static final double     COUNTS_PER_MILLIMETER   = ((LIFT_COUNTS_PER_MOTOR_REV * GEAR_REDUCTION)/LEAD_ROD_THREAD_MM);
     static final double     LIFT_SPEED              = 0.6;
-    static final double     TURN_SPEED              = 0.5;
 
 
     private ElapsedTime runtime;
@@ -133,12 +130,12 @@ public class Crater extends LinearOpMode {
         slideMotor = hardwareMap.get(DcMotor.class, "slideMotor");
         rotateMotor = hardwareMap.get(DcMotor.class, "rotateMotor");
 
-        hangMotor = hardwareMap.get(DcMotor.class, "hangMotor");
-        liftMotor = hardwareMap.get(DcMotor.class, "hangMotor");
-
         intake = hardwareMap.get(CRServo.class, "Intake");
         outtake = hardwareMap.get(Servo.class, "outTake");
         depotDrop = hardwareMap.get(Servo.class, "depotDrop");
+
+
+        liftMotor = hardwareMap.get(DcMotor.class, "hangMotor");
 
         rotateMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         slideMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -154,7 +151,6 @@ public class Crater extends LinearOpMode {
         rightInnerDrive.setDirection(DcMotor.Direction.FORWARD);
 
         slideMotor.setDirection(DcMotor.Direction.REVERSE);
-
 
         intake.setDirection(CRServo.Direction.REVERSE);
 
@@ -178,10 +174,10 @@ public class Crater extends LinearOpMode {
         telemetry.addData("imu", "not initialized");
         telemetry.update();
 
-        imu = hardwareMap.get(BNO055IMU.class, "imu 1");
+        imu = hardwareMap.get(BNO055IMU.class, "imu");
         imu.initialize(parameters);
         telemetry.addData("imu", "initialized");
-
+        telemetry.update();
         //Set Motor Polarities
 
 
@@ -200,27 +196,91 @@ public class Crater extends LinearOpMode {
         telemetry.update();
 
 
-        // Send telemetry message to indicate successful Encoder reset
-        telemetry.addData("Path0",  "Starting at %7d",
-                liftMotor.getCurrentPosition());
-        telemetry.update();
+
 
         runtime.reset();
         /** Wait for the game to begin */
-        /** Activate Tensor Flow Object Detection. */
+        telemetry.addData(">", "Press Play to start tracking");
+        telemetry.update();
 
+        /** Activate Tensor Flow Object Detection. */
         if (tfod != null) {
             tfod.activate();
         }
+
+        int goldMineralX = -1;
+        int goldMineralY = -1;
+        boolean isFound = false;
+
+        int rightPosPoints = 0;
+        int centerPosPoints = 0;
+        int leftPosPoints = 0;
+
+
         while (!opModeIsActive()&&!isStopRequested()) {
-            telemetry.addData("Status", "Waiting in Init");     telemetry.update(); }
+
+
+            isFound = false;
+
+            if(tfod != null) {
+                List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
+
+                if(updatedRecognitions != null){
+                    for(Recognition recognition : updatedRecognitions){
+                        if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)){
+                            telemetry.addData("Gold Mineral Found: ", isFound);
+                        }else{
+                            telemetry.addData("Gold Mineral Found: ", isFound);
+                        }
+                        telemetry.update();
+                        if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)) {
+                            goldMineralX = (int) recognition.getLeft();
+                            goldMineralY = (int) recognition.getTop();
+                            isFound = true;
+                        }
+                    }
+
+                    if ((goldMineralX > 400) && isFound ) {
+                        rightPosPoints++;
+                    } else if ((goldMineralX < 400) && isFound) {
+                        centerPosPoints++;
+                    } else {
+                        leftPosPoints++;
+                    }
+                    //if the position points are greater than 100 take the most recent 100.
+                    if (rightPosPoints + leftPosPoints + centerPosPoints == 100) {
+                        rightPosPoints = 0;
+                        leftPosPoints = 0;
+                        centerPosPoints = 0;
+                    }
+
+                    //Show user the data
+                    telemetry.addData("Current GoldX: ", goldMineralX);
+                    telemetry.addData("Current GoldY: ", goldMineralY);
+                    telemetry.addData("RightPosPoints: ", rightPosPoints);
+                    telemetry.addData("CenterPosPoints: ", centerPosPoints);
+                    telemetry.addData("LeftPosPoints: ", leftPosPoints);
+                }
+
+            }
+
+            telemetry.update();
+        }
 
         if (opModeIsActive()) {
+            String pos = "Left";
+            if (rightPosPoints > centerPosPoints && rightPosPoints > leftPosPoints) {
+                pos = "Right";
+            }else if(centerPosPoints > rightPosPoints && centerPosPoints > leftPosPoints){
+                pos = "Center";
+            }else if(leftPosPoints > centerPosPoints && leftPosPoints > rightPosPoints){
+                pos = "Left";
+            }
+
             telemetry.addData("Change: ", "Rotate Motor set power 0.3");
             telemetry.update();
             rotateMotor.setPower(0.3);
             depotDrop.setPosition(upPos);
-
             //Land first
             encoderLift(true,1,10);
 
@@ -228,80 +288,35 @@ public class Crater extends LinearOpMode {
             telemetry.update();
             gyroDrive(0.5,10,0);
 
-            telemetry.addData("Change: ", "Turn to -45 degrees");
-            telemetry.update();
-            gyroTurn(0.3,-45);
 
 
-            telemetry.addData("Change: ", "Starting loop");
-            telemetry.update();
-            int goldMineralX = -1;
-            int goldMineralY = -1;
-            boolean isFound = false;
-            leftOuterDrive.setPower(-0.15);
-            rightOuterDrive.setPower(0.15);
 
-
-            while((goldMineralX > 450 || goldMineralX < 270) && opModeIsActive() && !isFound){
-                // Rotate a lil to the left each time (Moved to top because it will
-                // check the position of the gold mineral before moving.)
-                angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
-                gravity  = imu.getGravity();
-
-                telemetry.addData("Current angle: ", angles.firstAngle);
-                telemetry.addData("Current GoldX: ", goldMineralX);
-                telemetry.addData("Current GoldY: ", goldMineralY);
-                telemetry.update();
-
-                //If they're not detected after a certain angle, go back and re-scan until you can find one.
-                if (angles.firstAngle > 45){
-                    isFound = true;
-                }
-
-
-                if(tfod != null) {
-                    List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
-
-                    if(updatedRecognitions != null){
-                        for(Recognition recognition : updatedRecognitions){
-                            if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)){
-                                telemetry.addData("Gold Mineral Found: ", isFound);
-                            }else{
-                                telemetry.addData("Gold Mineral Found: ", isFound);
-                            }
-                            telemetry.update();
-                            //if(recognition.getTop() > 120 ) {
-                                if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)) {
-                                    goldMineralX = (int) recognition.getLeft();
-                                    goldMineralY = (int) recognition.getTop();
-                                    isFound = true;
-
-                                }
-                            //}
-                        }
-                        //gyroTurn(0.75,currentAngle);
-                    }
-                }
-            }
-            //Turn off all motors
-            leftInnerDrive.setPower(0);
-            leftOuterDrive.setPower(0);
-            rightInnerDrive.setPower(0);
-            rightOuterDrive.setPower(0);
-            sleep(150);
             currentAngle = angles.firstAngle;
 
+
+            //We assume we got it in and rotate the intake up.
+
+
+
             //Drive past minerals based on where the robot is located
-            if(currentAngle >= 20){
+            if(pos.equalsIgnoreCase("Left")){
                 telemetry.addData("Guess: ", "Left Side");
                 telemetry.update();
+                gyroTurn(DRIVE_SPEED, 30);
                 //left side
+                rotateSlide(true);
+                intake.setPower(-1);
                 //Drive into the mineral
-                encoderDrive(1,22,22,10);
+                encoderDrive(DRIVE_SPEED,22,22,10);
+                //intake the mineral
+                sleep(750);
+                //stop intake and pick up block
+                intake.setPower(0);
+                rotateSlide(false);
                 //back up and complete path
-                encoderDrive(1,-14,-14,10);
+                encoderDrive(DRIVE_SPEED,-14,-14,10);
                 //Turn to drive past minerals
-                gyroTurn(DRIVE_SPEED,90);
+                gyroTurn(0.6,90);
                 //Drive past minerals
                 gyroDrive(0.9,25,90);
                 //Face towards wall
@@ -318,14 +333,23 @@ public class Crater extends LinearOpMode {
                 sleep(500);
                 //Drive into crater
                 gyroDrive(0.9,70,-50);
-            }else if(currentAngle <= -20){
+                rotateSlide(true);
+            }else if(pos.equalsIgnoreCase("Right")){
                 telemetry.addData("Guess: ", "Right Side");
                 telemetry.update();
+                gyroTurn(DRIVE_SPEED, -36);
+
                 //right side
+                rotateSlide(true);
+                intake.setPower(-1);
                 //Drive into the mineral
                 encoderDrive(1,21,20,10);
-                //back up and complete path
-                encoderDrive(1,-12,-11,10);
+                //intake the mineral
+                sleep(750);
+                //stop intake and pick up block
+                intake.setPower(0);
+                rotateSlide(false);
+                encoderDrive(1,-14,-13,10);
                 //rotate to right to go past minerals
                 gyroTurn(TURN_SPEED,90);
                 //Drive past others
@@ -335,21 +359,29 @@ public class Crater extends LinearOpMode {
                 //Drive to wall
                 gyroDrive(DRIVE_SPEED,13,45);
                 //Turn to back to depot
-                gyroTurn(TURN_SPEED,-45);
+                gyroTurn(TURN_SPEED,-48);
                 //Drive into depot
                 //Drive back into depot
-                gyroDrive(0.9,-45,-45);
+                gyroDrive(0.9,-45,-48);
                 //drop Marker
                 depotDrop.setPosition(downPos);
                 sleep(500);
                 //Drive into crater
-                gyroDrive(0.9,65,-45);
-            }else{
+                gyroDrive(0.9,65,-43);
+                rotateSlide(true);
+            }else if(pos.equalsIgnoreCase("Center")){
                 telemetry.addData("Guess: ", "Center");
                 telemetry.update();
                 //Assume center
+                rotateSlide(true);
+                intake.setPower(-1);
                 //Drive into the mineral
                 encoderDrive(1,19,18,10);
+                //intake the mineral
+                sleep(750);
+                //stop intake and pick up block
+                intake.setPower(0);
+                rotateSlide(false);
                 //back up and complete path
                 encoderDrive(1,-12,-11,10);
                 //rotate to right to go past minerals
@@ -361,22 +393,119 @@ public class Crater extends LinearOpMode {
                 //Drive into wall
                 gyroDrive(0.9,14,45);
                 //Turn to face depot
-                gyroTurn(TURN_SPEED,-55);
+                gyroTurn(TURN_SPEED,-45);
                 //Drive into depot
                 //Drive back into depot
-                gyroDrive(0.9,-50,-55);
+                gyroDrive(0.9,-50,-45);
                 //drop Marker
                 depotDrop.setPosition(downPos);
                 sleep(250);
                 //Drive into crater
-                gyroDrive(0.9,63,-55);
+                gyroDrive(0.9,63,-45);
+                rotateSlide(true);
             }
-
-            rotateSlide(true);
-
+            sleep(350);
 
 
 
+
+            /*
+            if (mineralPlace.equalsIgnoreCase("Center")){
+                telemetry.addData("Case", "Center");
+                telemetry.update();
+
+                //drive the mineral to depot
+                gyroTurn(TURN_SPEED,-10);
+                gyroDrive(DRIVE_SPEED,53,-7);
+                //set marker down
+                rotateSlide(true,false);
+                //pause
+                sleep(750);
+                //Rotate back up
+                rotateSlide(false,false);
+                //back up
+                gyroDrive(0.4,-7,0);
+                //turn to pass other stuff
+                gyroTurn(TURN_SPEED,-90);
+                //drive forward
+                gyroDrive(DRIVE_SPEED,15,-90);
+                //rotate a lil
+                gyroTurn(TURN_SPEED,-135);
+                //Drive into crater
+                gyroDrive(DRIVE_SPEED,60,-135);
+            }else if (mineralPlace.equalsIgnoreCase("Right")){
+                telemetry.addData("Case", "Right");
+                telemetry.update();
+
+                //drive the mineral to depot
+                gyroDrive(DRIVE_SPEED,17,0);
+                gyroTurn(TURN_SPEED,90);
+                gyroDrive(DRIVE_SPEED,18,90);
+                //Turn to face mineral
+                gyroTurn(TURN_SPEED,-20);
+                //Drive mineral into depot
+                gyroDrive(DRIVE_SPEED,45,-20);
+                //set marker down
+                rotateSlide(true,false);
+                //pause
+                sleep(750);
+                //Rotate back up
+                rotateSlide(false,false);
+                //back up
+                gyroDrive(0.4,-7,0);
+                //turn to pass other stuff
+                gyroTurn(TURN_SPEED,-90);
+                //drive forward
+                gyroDrive(DRIVE_SPEED,20,-90);
+                //rotate a lil
+                gyroTurn(TURN_SPEED,-135);
+                //Drive into crater
+                gyroDrive(1,75,-135);
+
+            }else if (mineralPlace.equalsIgnoreCase("Left")){
+                telemetry.addData("Case", "Left");
+                telemetry.update();
+
+                //drive the mineral to depot
+                gyroDrive(DRIVE_SPEED,17,0);
+                gyroTurn(TURN_SPEED,-90);
+                gyroDrive(DRIVE_SPEED,25,-90);
+                //Turn to face mineral
+                gyroTurn(TURN_SPEED,10);
+                //Drive mineral into depot
+                gyroDrive(DRIVE_SPEED,45,10);
+                //set marker down
+                rotateSlide(true,false);
+                //pause
+                sleep(1000);
+                //Rotate back up
+                rotateSlide(false,false);
+                //Drive backward into crater
+                gyroDrive(1,-90,45);
+            }else if (mineralPlace.equalsIgnoreCase("No place detected")){
+                telemetry.addData("Case", "Center");
+                telemetry.update();
+
+                //drive the mineral to depot
+                gyroTurn(TURN_SPEED,-10);
+                gyroDrive(DRIVE_SPEED,53,-7);
+                //set marker down
+                rotateSlide(true,false);
+                //pause
+                sleep(750);
+                //Rotate back up
+                rotateSlide(false,false);
+                //back up
+                gyroDrive(0.4,-7,0);
+                //turn to pass other stuff
+                gyroTurn(TURN_SPEED,-90);
+                //drive forward
+                gyroDrive(DRIVE_SPEED,15,-90);
+                //rotate a lil
+                gyroTurn(TURN_SPEED,-135);
+                //Drive into crater
+                gyroDrive(DRIVE_SPEED,60,-135);
+            }*/
 
         }
         if (tfod != null) {
@@ -465,7 +594,7 @@ public class Crater extends LinearOpMode {
         int tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
                 "tfodMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         TFObjectDetector.Parameters tfodParameters = new TFObjectDetector.Parameters(tfodMonitorViewId);
-        tfodParameters.minimumConfidence = 0.1;
+        tfodParameters.minimumConfidence = 0.35;
         tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
         tfod.loadModelFromAsset(TFOD_MODEL_ASSET, LABEL_GOLD_MINERAL, LABEL_SILVER_MINERAL);
     }
@@ -529,7 +658,58 @@ public class Crater extends LinearOpMode {
         }
     }
 
+    public void encoderLift(boolean raiseUp, double speed,
+                            double timeoutS) {
+        int newLiftTarget;
 
+
+        // Ensure that the opmode is still active
+        if (opModeIsActive()) {
+
+            if (raiseUp == true) {
+                newLiftTarget = liftTargetUp;
+            } else if (raiseUp == false) {
+                newLiftTarget = liftTargetDown;
+            } else {
+                newLiftTarget = liftTargetDown;
+            }
+
+            liftMotor.setTargetPosition(newLiftTarget);
+
+            // Turn On RUN_TO_POSITION
+            liftMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+
+            // reset the timeout time and start motion.
+            runtime.reset();
+            liftMotor.setPower(Math.abs(speed));
+
+            // keep looping while we are still active, and there is time left, and both motors are running.
+            // Note: We use (isBusy() && isBusy()) in the loop test, which means that when EITHER motor hits
+            // its target position, the motion will stop.  This is "safer" in the event that the robot will
+            // always end the motion as soon as possible.
+            // However, if you require that BOTH motors have finished their moves before the robot continues
+            // onto the next step, use (isBusy() || isBusy()) in the loop test.
+            while (opModeIsActive() &&
+                    (runtime.seconds() < timeoutS) &&
+                    (liftMotor.isBusy())) {
+
+                // Display it for the driver.
+                telemetry.addData("Path1",  "Running to %7d", newLiftTarget);
+                telemetry.addData("Path2",  "Running at %7d",
+                        liftMotor.getCurrentPosition());
+                telemetry.update();
+            }
+
+            // Stop all motion;
+            liftMotor.setPower(0);
+
+            // Turn off RUN_TO_POSITION
+            liftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+            //  sleep(250);   // optional pause after each move
+        }
+    }
 
     public void gyroDrive ( double speed,
                             double distance,
@@ -609,62 +789,6 @@ public class Crater extends LinearOpMode {
             rightOuterDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
     }
-
-
-
-    public void encoderLift(boolean raiseUp, double speed,
-                            double timeoutS) {
-        int newLiftTarget;
-
-
-        // Ensure that the opmode is still active
-        if (opModeIsActive()) {
-
-            if (raiseUp == true) {
-                newLiftTarget = liftTargetUp;
-            } else if (raiseUp == false) {
-                newLiftTarget = liftTargetDown;
-            } else {
-                newLiftTarget = liftTargetDown;
-            }
-
-            liftMotor.setTargetPosition(newLiftTarget);
-
-            // Turn On RUN_TO_POSITION
-            liftMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-
-
-            // reset the timeout time and start motion.
-            runtime.reset();
-            liftMotor.setPower(Math.abs(speed));
-
-            // keep looping while we are still active, and there is time left, and both motors are running.
-            // Note: We use (isBusy() && isBusy()) in the loop test, which means that when EITHER motor hits
-            // its target position, the motion will stop.  This is "safer" in the event that the robot will
-            // always end the motion as soon as possible.
-            // However, if you require that BOTH motors have finished their moves before the robot continues
-            // onto the next step, use (isBusy() || isBusy()) in the loop test.
-            while (opModeIsActive() &&
-                    (runtime.seconds() < timeoutS) &&
-                    (liftMotor.isBusy())) {
-
-                // Display it for the driver.
-                telemetry.addData("Path1", "Running to %7d", newLiftTarget);
-                telemetry.addData("Path2", "Running at %7d",
-                        liftMotor.getCurrentPosition());
-                telemetry.update();
-            }
-
-            // Stop all motion;
-            liftMotor.setPower(0);
-
-            // Turn off RUN_TO_POSITION
-            liftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-            //  sleep(250);   // optional pause after each move
-        }
-    }
-
     public void gyroTurn (  double speed, double angle) {
 
         // keep looping while we are still active, and not on heading.
@@ -697,7 +821,6 @@ public class Crater extends LinearOpMode {
             leftSpeed   = -(rightSpeed);
         }
 
-        
         // Send desired speeds to motors.
         leftOuterDrive.setPower(leftSpeed);
         rightOuterDrive.setPower(rightSpeed);

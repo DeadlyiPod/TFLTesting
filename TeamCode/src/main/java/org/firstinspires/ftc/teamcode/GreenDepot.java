@@ -96,7 +96,7 @@ public class GreenDepot extends LinearOpMode {
 
     //LEAD SCREW VARS
     //Lead Screw Lift Targets
-    int liftTargetUp = 18000;
+    int liftTargetUp = 10800;
     int liftTargetDown = 0;
 
     //Servo Position Vars
@@ -219,9 +219,9 @@ public class GreenDepot extends LinearOpMode {
 
 
         while (!opModeIsActive()&&!isStopRequested()) {
-            telemetry.addData("Status", "Waiting in Init");
-            telemetry.update();
 
+
+            isFound = false;
 
             if(tfod != null) {
                 List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
@@ -248,8 +248,19 @@ public class GreenDepot extends LinearOpMode {
                     } else {
                         leftPosPoints++;
                     }
+                    //if the position points are greater than 100 take the most recent 100.
+                    if (rightPosPoints + leftPosPoints + centerPosPoints == 100) {
+                        rightPosPoints = 0;
+                        leftPosPoints = 0;
+                        centerPosPoints = 0;
+                    }
+
+                    //Show user the data
                     telemetry.addData("Current GoldX: ", goldMineralX);
                     telemetry.addData("Current GoldY: ", goldMineralY);
+                    telemetry.addData("RightPosPoints: ", rightPosPoints);
+                    telemetry.addData("CenterPosPoints: ", centerPosPoints);
+                    telemetry.addData("LeftPosPoints: ", leftPosPoints);
                 }
 
             }
@@ -258,9 +269,13 @@ public class GreenDepot extends LinearOpMode {
         }
 
         if (opModeIsActive()) {
-
-            if (rightPosPoints > centerPosPoints) {
-                
+            String pos = "Left";
+            if (rightPosPoints > centerPosPoints && rightPosPoints > leftPosPoints) {
+                pos = "Right";
+            }else if(centerPosPoints > rightPosPoints && centerPosPoints > leftPosPoints){
+                pos = "Center";
+            }else if(leftPosPoints > centerPosPoints && leftPosPoints > rightPosPoints){
+                pos = "Left";
             }
 
             telemetry.addData("Change: ", "Rotate Motor set power 0.3");
@@ -270,33 +285,18 @@ public class GreenDepot extends LinearOpMode {
             //Land first
             encoderLift(true,1,10);
 
-            telemetry.addData("Change: ", "Rotate Motor set power 0.3");
-            telemetry.update();
-            rotateMotor.setPower(0.3);
-
-            telemetry.addData("Change: ", "5 Inches forward");
+            telemetry.addData("Change: ", "10 Inches forward");
             telemetry.update();
             gyroDrive(0.5,10,0);
 
-            telemetry.addData("Change: ", "Turn to -45 degrees");
-            telemetry.update();
-            gyroTurn(0.3,-45);
-
-
-            telemetry.addData("Change: ", "Starting loop");
-            telemetry.update();
-            leftOuterDrive.setPower(-0.15);
-            rightOuterDrive.setPower(0.15);
+            if(pos.equalsIgnoreCase("Right")){
+                gyroTurn(DRIVE_SPEED, -45);
+            }else if(pos.equalsIgnoreCase("Center")){
+                //do nothing cos ur at the angle
+            }
 
 
 
-
-            //Turn off all motors
-            leftInnerDrive.setPower(0);
-            leftOuterDrive.setPower(0);
-            rightInnerDrive.setPower(0);
-            rightOuterDrive.setPower(0);
-            sleep(500);
             currentAngle = angles.firstAngle;
 
 
@@ -305,18 +305,26 @@ public class GreenDepot extends LinearOpMode {
 
 
             //Drive past minerals based on where the robot is located
-            if(currentAngle >= 20){
+            if(pos.equalsIgnoreCase("Left")){
                 telemetry.addData("Guess: ", "Left Side");
                 telemetry.update();
+
+                gyroTurn(DRIVE_SPEED, 30);
                 //left side
                 //Since we're facing the mineral we can collect the mineral by lowering the intake and rotating the intake and driving into it.
-
+                rotateSlide(true);
+                intake.setPower(-1);
                 encoderDrive(1.00,26,26,10);
+                //Intake the mineral
+                sleep(750);
+                //stop intake and pick up block
+                intake.setPower(0);
+                rotateSlide(false);
                 //back up and complete path
-                encoderDrive(1.00,-20,-20,10);
+                encoderDrive(1.00,-12,-12,10);
                 //Turn and drive to get past minerals
-                gyroTurn(TURN_SPEED, 85);
-                gyroDrive(DRIVE_SPEED, 46,85 );
+                gyroTurn(TURN_SPEED, 90);
+                gyroDrive(DRIVE_SPEED, 39,90);
 
                 //Turn back to depot and drive
                 gyroTurn(TURN_SPEED, 128);
@@ -328,13 +336,23 @@ public class GreenDepot extends LinearOpMode {
 
                 //Drive Forward to crater
                 gyroDrive(0.9,66,128);
-            }else if(currentAngle <= -20){
+            }else if(pos.equalsIgnoreCase("Right")){
+
                 telemetry.addData("Guess: ", "Right Side");
                 telemetry.update();
+
+                gyroTurn(DRIVE_SPEED, -36);
+
                 //right side
                 //Since we're facing the mineral we can collect the mineral by lowering the intake and rotating the intake and driving into it.
-
+                rotateSlide(true);
+                intake.setPower(-1);
                 encoderDrive(1.00,26,26,10);
+                //Intake the mineral
+                sleep(750);
+                //stop intake and pick up block
+                intake.setPower(0);
+                rotateSlide(false);
                 //back up and complete path
                 encoderDrive(1.00,-20,-20,10);
                 //Turn and drive to get past minerals
@@ -351,13 +369,19 @@ public class GreenDepot extends LinearOpMode {
 
                 //Drive Forward to crater
                 gyroDrive(0.9,66,128);
-            }else{
+            }else if(pos.equalsIgnoreCase("Center")){
                 telemetry.addData("Guess: ", "Center");
                 telemetry.update();
                 //Assume center
                 //Since we're facing the mineral we can collect the mineral by lowering the intake and rotating the intake and driving into it.
-
+                rotateSlide(true);
+                intake.setPower(-1);
                 encoderDrive(1.00,26,26,10);
+                //Intake the mineral
+                sleep(750);
+                //stop intake and pick up block
+                intake.setPower(0);
+                rotateSlide(false);
                 //back up and complete path
                 encoderDrive(1.00,-20,-20,10);
                 //Turn and drive to get past minerals
@@ -488,8 +512,6 @@ public class GreenDepot extends LinearOpMode {
     //Rotate Slider Method
     private void rotateSlide(boolean down) {
 
-
-
         if(opModeIsActive()){
             if(down) {
                 //raise up
@@ -565,7 +587,7 @@ public class GreenDepot extends LinearOpMode {
         int tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
                 "tfodMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         TFObjectDetector.Parameters tfodParameters = new TFObjectDetector.Parameters(tfodMonitorViewId);
-        tfodParameters.minimumConfidence = 0.1;
+        tfodParameters.minimumConfidence = 0.35;
         tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
         tfod.loadModelFromAsset(TFOD_MODEL_ASSET, LABEL_GOLD_MINERAL, LABEL_SILVER_MINERAL);
     }

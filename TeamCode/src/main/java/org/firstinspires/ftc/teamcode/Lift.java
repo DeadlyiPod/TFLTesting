@@ -34,6 +34,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcontroller.external.samples.HardwarePushbot;
@@ -72,10 +73,11 @@ public class Lift extends LinearOpMode {
 
     //Lead Screw Lift Targets
     int liftTargetUp = 0;
-    int liftTargetDown = -18000;
+    int liftTargetDown = -10800;
 
     /* Declare OpMode members. */
     private DcMotor liftMotor = null;
+    private Servo depotDrop = null;
     private ElapsedTime     runtime = new ElapsedTime();
 
     static final double     COUNTS_PER_MOTOR_REV    = 560;    // eg: TETRIX Motor Encoder
@@ -93,6 +95,8 @@ public class Lift extends LinearOpMode {
          * The init() method of the hardware class does all the work here
          */
         liftMotor = hardwareMap.get(DcMotor.class, "hangMotor");
+        depotDrop = hardwareMap.get(Servo.class, "depotDrop");
+
 
         // Send telemetry message to signify robot waiting;
         telemetry.addData("Status", "Resetting Encoders");    //
@@ -117,6 +121,7 @@ public class Lift extends LinearOpMode {
         // Note: Reverse movement is obtained by setting a negative distance (not speed)
         encoderLift(true, LIFT_SPEED,    20.0);
         sleep(1000);
+        depotDrop.setPosition(1);
         encoderLift(false, LIFT_SPEED,  30.0);
         sleep(1000);     // pause for servos to move
 
